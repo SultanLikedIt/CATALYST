@@ -52,9 +52,9 @@ dashboard'u üretmek için GUI'ye ihtiyaç duymaz). Başsız kendi testi (pencer
 
 ```bash
 cd sunum
-# S4 ekran görüntüleri shots/ içinde hazır gelir; yeniden almak istersen (tek seferlik):
-#   uv run --with playwright playwright install chromium
-#   uv run --with playwright python make_shots.py
+# Sunum çıktıları repoda TUTULMAZ; hepsi buradan yeniden üretilir (sırayla):
+uv run --with playwright playwright install chromium   # ilk seferde
+uv run --with playwright python make_shots.py          # → shots/*.png (S4 ekran görüntüleri)
 uv run make_charts.py                # → charts/*.png (marka grafikler; S2·S6'ya gömülür)
 uv run fill_sablon.py                # → Grup9_Catalyst.pptx (RESMİ şablon, 7 slayt; grafik + ekranları gömer)
 uv run make_handout.py               # → catalyst_el_notu.pdf (2 sayfa jüri el notu)
@@ -81,8 +81,6 @@ ortama girmez. Başsız doğrulama: `QT_QPA_PLATFORM=offscreen uv run --group gu
 ## Diğer script'ler
 
 ```bash
-uv run analysis.py              # (eski akış) SBA + 2033 min-max + risk skoru → pn_2033_plan_full.csv
-uv run inv_analysis.py          # (eski akış) gerçek stok vs plan
 uv run train_demand_model.py    # TensorFlow/Keras hibrit model → demand_model.keras + model_results.json
 ```
 
@@ -104,6 +102,7 @@ BER, SBA, cold-start…) aranabilir Türkçe açıklamalarını açar — jüri 
 | `dummy_pn_inventory_status.csv` | PN bazlı stok kovaları + CLP/FMV/tamir maliyetleri (resmi girdi) |
 | `fleet_distribution.csv` | 14 model, 2025→2033 filo projeksiyonu (resmi girdi) |
 | `train_demand_model.py`, `demand_model.keras`, `model_deney_notlari.md` | Derin öğrenme hattı |
+| `data_explorer.py` | İç veri gezgini (PyQt6, sunum değil) |
 
 ## Doğrulama
 

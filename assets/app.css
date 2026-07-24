@@ -45,9 +45,6 @@ a{color:var(--info);text-decoration:none}
 
 /* ---------- başlık ---------- */
 .hero{padding:22px 0 16px}
-.eyebrow{display:inline-flex;align-items:center;gap:8px;font-family:var(--fm);font-size:.7rem;
-         text-transform:uppercase;letter-spacing:.13em;color:var(--muted);margin-bottom:9px}
-.eyebrow::before{content:'';width:6px;height:6px;background:var(--marka)}
 .hero h1{font-size:clamp(1.35rem,1.05rem+1.3vw,1.85rem);letter-spacing:-.01em;margin-bottom:7px}
 .hero p{color:var(--muted);max-width:840px;font-size:.9rem}
 
@@ -60,7 +57,6 @@ a{color:var(--info);text-decoration:none}
 .g4{grid-template-columns:repeat(4,1fr)}
 .g21{grid-template-columns:1.55fr 1fr}
 .g12{grid-template-columns:1fr 1.55fr}
-.auto{grid-template-columns:repeat(auto-fit,minmax(190px,1fr))}
 @media(max-width:1080px){.g4{grid-template-columns:repeat(2,1fr)}.g3,.g21,.g12{grid-template-columns:1fr}}
 @media(max-width:720px){.g2,.g4{grid-template-columns:1fr}}
 .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:15px 17px}
@@ -93,7 +89,6 @@ a{color:var(--info);text-decoration:none}
 .callout.red .tag{color:var(--red)} .callout.amber .tag{color:var(--amber)}
 .callout p{color:var(--muted);font-size:.87rem}
 .callout b,.callout strong{color:var(--text);font-weight:600}
-.big{font-family:var(--fm);font-size:2rem;font-weight:600;color:var(--red);line-height:1.1}
 
 /* ---------- tablo ---------- */
 .tw{overflow:auto;max-height:560px;border-radius:var(--r);border:1px solid var(--line)}
@@ -119,7 +114,6 @@ td.n,th.n{text-align:right;font-family:var(--fm)}
 .bg-red{background:var(--red);color:#fff}
 .bg-teal{background:var(--teal-soft);color:var(--teal);border:1px solid var(--teal-dim)}
 .bg-warn{background:var(--amber-soft);color:var(--amber);border:1px solid var(--amber-line)}
-.dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:6px;vertical-align:1px}
 
 /* ---------- kontroller ---------- */
 .ctl{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:11px;align-items:center}
@@ -158,20 +152,6 @@ input[type=range]{width:100%;accent-color:var(--info);height:4px;cursor:pointer}
       overflow:hidden;border:1px solid var(--line-strong);cursor:grab;touch-action:none}
 .tmap:active{cursor:grabbing}
 .tmap svg{width:100%;height:100%;display:block}
-.tland{fill:#FFFFFF;stroke:#B6BDC7;stroke-width:1.2;vector-effect:non-scaling-stroke}
-.tsea{fill:#EDF1F5;stroke:#CBD4DC;stroke-width:.8;vector-effect:non-scaling-stroke}
-.tstrait{stroke:#EDF1F5;fill:none;stroke-linecap:round}
-.tnode{cursor:pointer}
-.tnode circle.c{fill:#0E6B4A;stroke:#FFFFFF;stroke-width:1.4}
-.tnode.hot circle.c{fill:#8A6000}
-.tnode.kriz circle.c{fill:#C1121F}
-.tnode.sel circle.c{stroke:#1A1D21;stroke-width:2.2}
-.tnode circle.ring{fill:none;stroke:#8A6000;stroke-dasharray:4 3;stroke-width:1.6}
-.tnode text{font-family:var(--fm);font-weight:600;fill:#1A1D21;text-anchor:middle;pointer-events:none;
-            paint-order:stroke;stroke:#FFFFFF;stroke-width:2.4px;stroke-linejoin:round}
-.tnode text.v{fill:#5A6472;font-weight:500}
-.tflow{fill:none;stroke:#8A6000;stroke-dasharray:7 5;marker-end:url(#tArrow)}
-.tflow.dis{stroke:#C1121F}
 .ttip{position:absolute;z-index:5;pointer-events:none;background:var(--panel);border:1px solid var(--line-strong);
       border-radius:var(--r);padding:9px 12px;font-size:.76rem;line-height:1.5;color:var(--muted);max-width:250px;
       box-shadow:0 4px 14px rgba(26,29,33,.16);display:none}
@@ -295,8 +275,6 @@ input[type=range]{width:100%;accent-color:var(--info);height:4px;cursor:pointer}
       border-top:1px solid var(--line)}
 .bar-track{height:5px;border-radius:2px;background:var(--panel3);position:relative;overflow:hidden;min-width:56px}
 .bar-track i{position:absolute;inset:0 auto 0 0;border-radius:2px}
-.split{display:flex;gap:16px;flex-wrap:wrap}
-.split>div{flex:1;min-width:150px}
 .lg{display:flex;gap:14px;flex-wrap:wrap;font-size:.755rem;color:var(--muted);margin-top:9px}
 .lg span{display:flex;align-items:center;gap:6px}
 canvas{max-width:100%}
@@ -329,11 +307,6 @@ canvas{max-width:100%}
 /* Watchlist Durum sütunu — tek renk noktası (metin yok, ayrıntı tooltip + satır detayında).
    NOT: .dot adı harita lejantında 7px'lik başka bir yardımcı — bu yüzden sdot. */
 .sdot{display:inline-block;width:11px;height:11px;border-radius:50%;vertical-align:-1px;border:1px solid rgba(26,29,33,.18)}
-.sdot-kirmizi{background:#C1121F}
-.sdot-turuncu{background:#B87500}
-.sdot-sari{background:#8A7A00}
-.sdot-mor{background:#5B4B8A}
-.sdot-gri{background:#A8B0B8}
 
 /* Dünya haritası (açık teknik zemin) */
 .wn{cursor:pointer}

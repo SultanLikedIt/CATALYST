@@ -13,23 +13,19 @@ __pycache__/
 .vscode/
 *.swp
 
-# Script'lerin yeniden ürettiği ara dosyalar (analysis.py / inv_analysis.py çıktıları)
-pn_2033_plan_full.csv
-pn_full_with_inventory.csv
-inv_data.json
 # NOT: model_results.json ve demand_model.keras BİLEREK repoda —
 # klonlayan, TensorFlow kurmadan dashboard'un AI bölümünü üretebilsin.
 
-# Sunum üretim artıkları (hepsi yeniden üretilebilir)
-sunum/node_modules/
-sunum/package.json
-sunum/package-lock.json
-sunum/*.png
+# Sunum üretim artıkları — HEPSİ script'lerden yeniden üretilir, repoda tutulmaz.
+# Üretim: make_charts.py → charts/ · make_shots.py → shots/ · fill_sablon.py → .pptx · make_handout.py → .pdf
+sunum/charts/
+sunum/shots/
 sunum/qa_png/
-sunum/deck_qa.pdf
+sunum/*.png
+sunum/*.pdf
+sunum/Grup9_Catalyst.pptx
 sunum/sablon_unpacked/
-# NOT: sunum/charts/ ve sunum/shots/ BİLEREK repoda (alt klasörler; üstteki sunum/*.png bunları
-# kapsamaz) — deste bunları gömer, klonlayan matplotlib/playwright çalıştırmadan .pptx'i üretebilir.
+# sablon.pptx (resmi şablon) İZLENİR — üretilmez, kaynaktır.
 
 # Büyük yerel kaynak PDF'leri — repoya alınmaz, diskte durur
 # (Grp(910.pdf: basılı case taraması ~42 MB; makale yeniden indirilebilir)

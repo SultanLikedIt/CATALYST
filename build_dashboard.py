@@ -159,17 +159,6 @@ def build_payload():
     ceyrek = dict(ad=cey.index.tolist(), thy=r(cey.THY_TALEP_ADET, 0),
                   pool=r(cey.POOL_TALEP_ADET, 0), scrap=r(cey.SCRAP_ADET, 0))
 
-    # ------------------------------------------------------------- risk histogram
-    hist, _ = np.histogram(c.RISK.clip(0, 100), bins=np.arange(0, 101, 10))
-    risk_hist = [int(v) for v in hist]
-
-    # ----------------------------------------------------------------- Pareto eğrisi
-    dv = c.DEGER_FMV.sort_values(ascending=False).cumsum() / V * 100
-    tv = c.TALEP_25.sort_values(ascending=False).cumsum() / T25 * 100
-    idx = [int(i) for i in np.unique(np.linspace(0, len(c) - 1, 120).astype(int))]
-    pareto = dict(x=r([100 * (i + 1) / len(c) for i in idx], 2),
-                  deger=r(dv.values[idx], 1), adet=r(tv.values[idx], 1))
-
     # -------------------------------- harita: havalimanı ağı (TEMSİLİ dağıtım)
     # Kaynak: basılı case'in 5 satırlık istasyon tablosu → core.HAVALIMANLARI ile 25 noktaya
     # ağırlıkla açılır; grup toplamları case ile BİREBİR tutar (core.havalimani_tablosu garanti eder).
@@ -291,17 +280,6 @@ def build_payload():
         grup_n=len(grup), grup_ad=f"{c.loc[cs_pn, 'SUB']} × {c.loc[cs_pn, 'FAMILY']}",
     )
 
-    # ------------------------------------------------- dayanıklılık histogramları
-    aktif_tts = c.loc[c.TALEP_25 > 0, 'TTS']
-    tts_edges = [0, 30, 60, 90, 120, 150, 180, 240, 300, 365]
-    tts_counts = np.histogram(aktif_tts.clip(upper=1e9), bins=tts_edges + [np.inf])[0]
-    tts_hist = dict(etiket=[f'{a}–{b}' for a, b in zip(tts_edges, tts_edges[1:])] + ['365+'],
-                    sayi=[int(v) for v in tts_counts])
-    fc = c.FMV_CLP.dropna()
-    fc_counts, fc_edges = np.histogram(fc, bins=14)
-    fmv_clp_hist = dict(etiket=r(((fc_edges[:-1] + fc_edges[1:]) / 2), 3),
-                        sayi=[int(v) for v in fc_counts], medyan=r(fc.median(), 3))
-
     # =====================================================================
     # DERİN ANALİZ KATMANI — belirsizlik denemeleri · duyarlılık · optimizasyon · backtest
     # Hepsi deterministik (sabit tohum); jüri önünde yeniden üretilebilir.
@@ -360,14 +338,12 @@ def build_payload():
     u_all = rng.uniform(u_lo, u_hi, size=(400, 1))
     mc_p = (rng.poisson(mu33[None, :] * u_all) > svc_v[None, :]).mean(0)
     uyum = float(100 * (1 - np.abs(an_p - mc_p).mean()))
-    hist_edges = np.histogram_bin_edges(np.concatenate([mc_baz['dagilim'], mc_motor['dagilim']]), bins=14)
+    # NOT: histogram alanı kaldırıldı — arayüz artık kümülatif olasılık eğrisi çiziyor
+    # ve dağılımı tarayıcıda kapalı formülle üretiyor (bkz. app.js belirsizlik()).
     mc = dict(
         trials=T,
         baz={k: (r(v, 1) if isinstance(v, float) else v) for k, v in mc_baz.items() if k != 'dagilim'},
         motor={k: (r(v, 1) if isinstance(v, float) else v) for k, v in mc_motor.items() if k != 'dagilim'},
-        hist=dict(etiket=r(((hist_edges[:-1] + hist_edges[1:]) / 2), 0),
-                  baz=[int(v) for v in np.histogram(mc_baz['dagilim'], bins=hist_edges)[0]],
-                  motor=[int(v) for v in np.histogram(mc_motor['dagilim'], bins=hist_edges)[0]]),
         uyum=r(uyum, 1),
     )
 
@@ -538,9 +514,9 @@ def build_payload():
                 h[key] = h[key][::k]
 
     return dict(kpi=kpi, band=band_out, model=model_ser, kat=kat_ser, ceyrek=ceyrek,
-                riskHist=risk_hist, pareto=pareto, harita=harita, pn=pn,
+                harita=harita, pn=pn,
                 lookup=lookup, roi=roi, ml=ml_out, mlSeg=ml_seg, abcxyz=abcxyz,
-                coldstart=coldstart, ttsHist=tts_hist, fmvClpHist=fmv_clp_hist,
+                coldstart=coldstart,
                 mc=mc, tornado=tornado, opt=opt, backtest=backtest, params=P)
 
 
