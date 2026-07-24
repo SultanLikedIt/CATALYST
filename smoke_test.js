@@ -248,22 +248,34 @@ step('159 hurda anomalisi / 150 pool bağımlı', () => {
   const b6 = DATA.pn.flags.filter(f => f & 64).length, b7 = DATA.pn.flags.filter(f => f & 128).length;
   if (b6 !== 159 || b7 !== 150) throw new Error('bayrak bitleri ' + b6 + '/' + b7);
 });
-step('cold-start Bayes yakınsaması', () => {
-  const cs = DATA.coldstart, K0 = 1;
-  const post = n => (K0*cs.prior + cs.q.slice(0,n).reduce((a,b)=>a+b,0)) / (K0+n);
-  if (!(Math.abs(post(4) - cs.gercek) < Math.abs(cs.prior - cs.gercek)))
-    throw new Error('posterior gerçeğe yaklaşmıyor: ' + post(4));
-});
 step('tahmin gezgini verisi tam', () => {
   if (DATA.pn.q4.length !== 5000) throw new Error('q4 eksik');
   const nn = DATA.pn.nn4.filter(v => v != null).length;
   if (nn !== 5000) throw new Error('nn4 dolu değil: ' + nn);
 });
-step('mlSeg kırılımları', () => {
-  ['kesiklilik','kritiklik','hacim'].forEach(k => {
-    const g = DATA.mlSeg[k];
-    if (!g || !g.nn.length || g.nn.some(v => v == null)) throw new Error(k + ' bozuk');
-  });
+step('model bazında talep grafiği — payload + render', () => {
+  const m = DATA.model;
+  for (const k of ['ad','t25','t33','u25','u33'])
+    if (!m[k] || m[k].length !== 14) throw new Error('model.' + k + ' 14 uzunlukta değil');
+  /* 2033 talebine göre azalan sıralı olmalı (grafik bu sırayı varsayıyor) */
+  for (let i = 1; i < m.t33.length; i++)
+    if (m.t33[i] > m.t33[i-1]) throw new Error('model listesi t33 sırasında değil');
+  /* yeni nesil artmalı, küçülen klasikler azalmalı */
+  const yeniIdx = m.ad.map((_, i) => i).filter(i => m.yeni[i]);
+  const kuculIdx = m.ad.map((_, i) => i).filter(i => m.kucul[i]);
+  if (!yeniIdx.every(i => m.t33[i] > m.t25[i])) throw new Error('yeni nesilde talep artmıyor');
+  if (!kuculIdx.every(i => m.t33[i] < m.t25[i])) throw new Error('küçülen klasiklerde talep azalmıyor');
+  const h = els['v-ongoru']._html;
+  if (!h.includes('Model bazında yıllık talep')) throw new Error('kart render edilmedi');
+  if (!h.includes('cModel')) throw new Error('cModel canvas yok');
+  console.log(`   14 model · en büyük ${m.ad[0]} ${__APP.fmt(m.t25[0])}→${__APP.fmt(m.t33[0])} · yeni nesil ${yeniIdx.length}, küçülen ${kuculIdx.length}`);
+});
+step('kaldırılan öngörü bölümleri geri gelmemiş', () => {
+  const h = els['v-ongoru']._html;
+  for (const t of ['Talep aralığı', 'Emekli filo planlayıcısı', 'Hata analizi', 'Cold-start'])
+    if (h.includes(t)) throw new Error('kaldırılan bölüm geri gelmiş: ' + t);
+  for (const k of ['coldstart', 'mlSeg', 'pareto', 'riskHist', 'ttsHist', 'fmvClpHist'])
+    if (k in DATA) throw new Error('ölü payload alanı hâlâ üretiliyor: DATA.' + k);
 });
 
 /* yeni özellikler: parametre paneli (senaryo render edildi) */

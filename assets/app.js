@@ -860,10 +860,15 @@ function renderOngoru(){
   </div>
 
   <h2 class="sec-h">2033 projeksiyonu: büyüme değil, dağılım değişimi</h2>
-  <div class="grid g3">
-    <div class="card"><h3>Talep aralığı: +%${Math.round(B.alt_pct)} – +%${Math.round(B.ust_pct)}</h3>
-      <div class="hint">İki ayrı yöntemin sonucu aralık olarak verilir. Nokta tahmin kullanılmaz.</div>
-      <div style="height:250px"><canvas id="cBant"></canvas></div></div>
+  <div class="card">
+    <h3>Model bazında yıllık talep: 2025 → 2033</h3>
+    <div class="hint">Her modelin yıllık komponent talebi, bugünkü gerçekleşen ile 2033 projeksiyonu yan yana.
+    Filo büyümesi tek başına anlatmıyor: yeni nesil modellerde çubuk ikiye katlanırken küçülen klasiklerde geriliyor.
+    Sıralama 2033 talebine göre.</div>
+    <div style="height:330px"><canvas id="cModel"></canvas></div>
+  </div>
+
+  <div class="grid g2">
     <div class="card"><h3>Talep nasıl yer değiştiriyor?</h3>
       <div class="hint">Yeni nesil modellerin payı %34'ten %65'e çıkıyor, küçülen 4 klasik model ise %43'ten %16'ya iniyor.
       Geçmişi olmayan parça tahmini bu yüzden ana senaryo.</div>
@@ -873,13 +878,8 @@ function renderOngoru(){
       <div style="height:250px"><canvas id="cKat"></canvas></div></div>
   </div>
 
-  <div class="card"><h3>Emekli filo planlayıcısı: 4 klasik modele bağlı ${mM(K.phaseout)}</h3>
-      <div class="hint">Çubuklar modele bağlı stok değeri, çizgi 2033'e talep değişimi. Eritme takvimle değil sinyalle:
-      kalan talep eşiğin altına inince hızlanır, OEM gecikirse kendiliğinden yavaşlar. Canlı prova Senaryo sekmesinde.</div>
-      <div style="height:235px"><canvas id="cPhase"></canvas></div></div>
-
   ${ml ? `
-  <div class="grid g21">
+  <div>
     <div class="card"><h3>Tahmin gezgini: model bu parça için ne dedi?</h3>
       <div class="ctl" style="margin-bottom:9px">
         <input type="text" id="gzQ" placeholder="PN ara (örn. 101741)…" style="width:150px">
@@ -888,26 +888,9 @@ function renderOngoru(){
       </div>
       <div class="hint" id="gzInfo"></div>
       <div style="height:215px"><canvas id="cGez"></canvas></div></div>
-    <div class="card"><h3>Hata analizi: ağ nerede iyi, nerede zayıf?</h3>
-      <div class="ctl" style="margin-bottom:9px">
-        <span class="chip sg on" data-s="kesiklilik">Kesiklilik</span>
-        <span class="chip sg" data-s="kritiklik">Kritiklik</span>
-        <span class="chip sg" data-s="hacim">Hacim</span>
-      </div>
-      <div class="hint" id="sgOzet"></div>
-      <div style="height:205px"><canvas id="cSeg"></canvas></div></div>
   </div>` : `
   <div class="callout amber"><span class="tag">Model çıktısı yok</span><p>model_results.json bulunamadı.
-  <span class="mono">uv run train_demand_model.py</span> çalıştırın.</p></div>`}
-
-  <div class="card"><h3>Cold-start: geçmişi olmayan parçayı tahmin etmek</h3>
-      <div class="hint">Örnek: <b class="mono" style="color:${C.teal}">PN-${DATA.coldstart.pn}</b>, ${DATA.coldstart.sub}.
-      Başlangıç tahmini <b>${DATA.coldstart.grup_ad}</b> ailesindeki ${fmt(DATA.coldstart.grup_n)} benzerin ortalaması,
-      <b>${String(DATA.coldstart.prior).replace('.',',')} adet</b>. Gerçek değer ${String(DATA.coldstart.gercek).replace('.',',')}.
-      Kaydırıcıyla gözlem ekleyin, tahmin parçanın kendi değerine yakınsar.</div>
-      <div class="sl" style="max-width:430px"><label>Gelen gözlem <b id="csLbl">0 çeyrek, yalnız başlangıç tahmini</b></label>
-        <input type="range" id="csN" min="0" max="4" step="1" value="0"></div>
-      <div style="height:190px"><canvas id="cCold"></canvas></div></div>`;
+  <span class="mono">uv run train_demand_model.py</span> çalıştırın.</p></div>`}`;
 
   const ceyD = DATA.ceyrek;
   new Chart($('cCey'), {data:{labels:ceyD.ad,datasets:[
@@ -917,12 +900,22 @@ function renderOngoru(){
     options:{maintainAspectRatio:false,scales:{x:{stacked:true},y:{stacked:true},
       y1:{position:'right',grid:{drawOnChartArea:false},beginAtZero:true}}}});
 
-  new Chart($('cBant'), {data:{labels:['2025','2033'],datasets:[
-    {type:'bar',label:'Gerçekleşen',data:[K.talep25,null],backgroundColor:tint(C.bilgi,.72),barPercentage:.5,borderRadius:4},
-    {type:'bar',label:'Bant (segment ↔ model bazlı)',data:[null,[B.alt,B.ust]],backgroundColor:tint(C.uyari,.42),borderColor:C.amber,borderWidth:1.5,barPercentage:.5,borderRadius:4},
-    {type:'line',label:'PN motoru',data:[K.talep25,B.motor],borderColor:C.teal,borderDash:[6,4],pointBackgroundColor:C.teal,pointRadius:4}]},
-    options:{maintainAspectRatio:false,scales:{y:{ticks:{callback:v=>fmt(v)}}},
-      plugins:{tooltip:{callbacks:{label:c=>Array.isArray(c.raw)?` bant: ${fmt(c.raw[0])} – ${fmt(c.raw[1])}`:` ${c.dataset.label}: ${fmt(c.parsed.y)}`}}}}});
+  /* ---- model bazında yıllık talep: 2025 → 2033 ---- */
+  const mdT = DATA.model;
+  new Chart($('cModel'), {type:'bar', data:{labels:mdT.ad, datasets:[
+    {label:'2025 gerçekleşen', data:mdT.t25, backgroundColor:tint(C.bilgi,.62),
+     borderColor:C.bilgi, borderWidth:1, borderSkipped:false, borderRadius:2},
+    {label:'2033 tahmin', data:mdT.t33, backgroundColor:tint(C.kritik,.62),
+     borderColor:C.kritik, borderWidth:1, borderSkipped:false, borderRadius:2}]},
+    options:{maintainAspectRatio:false,
+      plugins:{legend:{labels:{boxWidth:10}},
+        tooltip:{callbacks:{
+          label:c => ` ${c.dataset.label}: ${fmt(c.parsed.y)} adet/yıl`,
+          afterBody:it => { const i = it[0].dataIndex, d = 100*(mdT.t33[i]/mdT.t25[i]-1);
+            return `değişim ${d>=0?'+':'−'}%${Math.abs(Math.round(d))} · uçak ${fmt(mdT.u25[i])} → ${fmt(mdT.u33[i])}`; }}}},
+      scales:{x:{ticks:{font:{size:9.5}, maxRotation:52, minRotation:38}, grid:{display:false}},
+              y:{beginAtZero:true, title:{display:true, text:'yıllık komponent talebi (adet)'},
+                 ticks:{callback:v=>fmt(v), font:{family:"ui-monospace,Menlo,monospace"}}}}}});
 
   const md = DATA.model; const g = {y:[0,0], k:[0,0], o:[0,0]};
   md.ad.forEach((m,i) => { const t = md.yeni[i] ? g.y : md.kucul[i] ? g.k : g.o; t[0]+=md.t25[i]; t[1]+=md.t33[i]; });
@@ -974,17 +967,6 @@ function renderOngoru(){
               y:{beginAtZero:true, title:{display:true,text:'toplam hata %'}, ticks:{callback:v=>'%'+v}},
               y1:{position:'right', beginAtZero:true, grid:{drawOnChartArea:false}, title:{display:true,text:'PN MAE'}}}}});
 
-  /* ---- phase-out planlayıcısı ---- */
-  const pmIdx = md.ad.map((_,i)=>i).filter(i=>md.kucul[i]);
-  new Chart($('cPhase'), {data:{labels:pmIdx.map(i=>md.ad[i]),datasets:[
-    {type:'bar',label:'Bağlı stok değeri ($M)',data:pmIdx.map(i=>md.deger[i]),backgroundColor:tint(C.mor,.58),borderRadius:4},
-    {type:'line',label:'Talep değişimi 2025→2033 (%)',yAxisID:'y1',data:pmIdx.map(i=>Math.round(100*(md.t33[i]/md.t25[i]-1))),
-     borderColor:C.red,backgroundColor:C.red,pointRadius:4}]},
-    options:{maintainAspectRatio:false,
-      plugins:{tooltip:{callbacks:{afterLabel:c=>{const i=pmIdx[c.dataIndex];
-        return `Uçak ${md.u25[i]} → ${md.u33[i]}  (THY ${md.thy25[i]}→${md.thy33[i]} · Pool ${md.pool25[i]}→${md.pool33[i]})`;}}}},
-      scales:{y:{ticks:{callback:v=>'$'+v+'M'}},y1:{position:'right',grid:{drawOnChartArea:false},ticks:{callback:v=>v+'%'}}}}});
-
   /* ---- tahmin gezgini ---- */
   function sbaJS(x){
     const a = PRM.sba_alpha;
@@ -1024,50 +1006,6 @@ function renderOngoru(){
     });
     gezDraw(0);
   }
-
-  /* ---- hata analizi ---- */
-  let segChart = null;
-  function segDraw(key){
-    document.querySelectorAll('#v-ongoru .sg').forEach(c=>c.classList.toggle('on',c.dataset.s===key));
-    const sgd = DATA.mlSeg[key];
-    const enYakin = sgd.ad.map((_,i)=>i).reduce((a,b)=>(sgd.nn[a]/sgd.sba[a] <= sgd.nn[b]/sgd.sba[b] ? a : b));
-    $('sgOzet').innerHTML = `MAE (küçük iyi) · grup büyüklükleri parantez içinde. Ağın klasiklere en yaklaştığı grup:
-      <b>${sgd.ad[enYakin]}</b> (fark ${pct(100*(sgd.nn[enYakin]/sgd.sba[enYakin]-1))}).`;
-    const cfg = {type:'bar',data:{labels:sgd.ad.map((a,i)=>`${a} (${fmt(sgd.n[i])})`),datasets:[
-      {label:'Sinir ağı',data:sgd.nn,backgroundColor:tint(C.mor,.72),borderRadius:3},
-      {label:'SBA',data:sgd.sba,backgroundColor:tint(C.iyi,.72),borderRadius:3},
-      {label:'3Ç ortalaması',data:sgd.ma3,backgroundColor:tint(C.bilgi,.42),borderRadius:3}]},
-      options:{maintainAspectRatio:false,scales:{y:{beginAtZero:true}},
-        plugins:{legend:{labels:{boxWidth:9,font:{size:10}}}}}};
-    if(segChart){ segChart.destroy(); }
-    segChart = new Chart($('cSeg'), cfg);
-  }
-  if(ml && DATA.mlSeg){
-    el.addEventListener('click', e => { const c = e.target.closest('.sg'); if(c) segDraw(c.dataset.s); });
-    segDraw('kesiklilik');
-  }
-
-  /* ---- cold-start canlı hesap ---- */
-  const cs = DATA.coldstart, K0 = 1;                       // öncül ağırlığı ≈ 1 çeyreklik gözlem
-  const post = n => (K0*cs.prior + cs.q.slice(0,n).reduce((a,b)=>a+b,0)) / (K0 + n);
-  const csLabels = ['Öncül','+Q1','+Q2','+Q3','+Q4'];
-  let csChart = null;
-  function csDraw(n){
-    $('csLbl').textContent = n === 0 ? '0 çeyrek, yalnız başlangıç tahmini'
-      : `${n} çeyrek gözlem: ${cs.q.slice(0,n).join(', ')}`;
-    const vals = csLabels.map((_,i)=>+(post(i).toFixed(2)));
-    const cfg = {data:{labels:csLabels,datasets:[
-      {type:'line',label:'Tahmin (adet/çeyrek)',data:vals,borderColor:C.teal,backgroundColor:C.teal,
-       pointRadius:csLabels.map((_,i)=>i===n?8:3.5),pointBorderColor:csLabels.map((_,i)=>i===n?'#fff':C.teal),tension:.25},
-      {type:'line',label:'Gerçek oran',data:csLabels.map(()=>cs.gercek),borderColor:C.amber,borderDash:[6,4],pointRadius:0}]},
-      options:{maintainAspectRatio:false,scales:{y:{beginAtZero:true}},
-        plugins:{legend:{labels:{boxWidth:9,font:{size:10}}},
-          tooltip:{callbacks:{label:c=>` ${c.dataset.label}: ${f1(c.parsed.y)}`}}}}};
-    if(csChart){ csChart.destroy(); }
-    csChart = new Chart($('cCold'), cfg);
-  }
-  $('csN').addEventListener('input', e => csDraw(+e.target.value));
-  csDraw(0);
 
   /* scrap anomali → watchlist köprüsü */
   el.addEventListener('click', e => {

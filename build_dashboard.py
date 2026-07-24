@@ -241,44 +241,9 @@ def build_payload():
     ml_path = os.path.join(HERE, 'model_results.json')
     ml = json.load(open(ml_path, encoding='utf-8')) if os.path.exists(ml_path) else None
     nn4 = None
-    ml_seg = None
     if ml and 'pred_pn' in ml:
         pmap = dict(zip(ml['pred_pn']['pn'], ml['pred_pn']['pred']))
         nn4 = np.array([pmap.get(ix, np.nan) for ix in c.index], float)
-        def mae_of(mask):
-            m = mask & ~np.isnan(nn4)
-            return (r(np.abs(nn4[m] - q4[m]).mean(), 2), r(np.abs(sba4[m] - q4[m]).mean(), 2),
-                    r(np.abs(ma3[m] - q4[m]).mean(), 2), int(m.sum()))
-        def seg(pairs):
-            out = dict(ad=[], nn=[], sba=[], ma3=[], n=[])
-            for ad, mask in pairs:
-                a, b_, d, n = mae_of(np.asarray(mask))
-                out['ad'].append(ad); out['nn'].append(a); out['sba'].append(b_)
-                out['ma3'].append(d); out['n'].append(n)
-            return out
-        ml_seg = dict(
-            kesiklilik=seg([('Kesikli talep', c.KESIKLI.values), ('Düzenli talep', ~c.KESIKLI.values)]),
-            kritiklik=seg([(k, (c.KRITIK == k).values) for k in kr_sira]),
-            hacim=seg([('A — yüksek hacim', (abc == 'A').values), ('B — orta', (abc == 'B').values),
-                       ('C — düşük', (abc == 'C').values)]),
-        )
-
-    # ------------------------------------------------- cold-start canlı demo örneği
-    # Üçlü tehlike (AOG kritik + kabiliyetsiz + yeni nesil) içinden, analog grup öncülünün
-    # gerçekten EN ÇOK saptığı PN seçilir — Bayes güncellemesinin düzeltici gücü görünür olsun.
-    uclu = c[c.UCLU_TEHLIKE & (c.TALEP_25 >= 8)]
-    grp_mean = c.groupby(['SUB', 'FAMILY']).TALEP_25.transform('mean')   # PN kendisi dahil (yaklaşık öncül)
-    sapma = ((grp_mean.loc[uclu.index] - uclu.TALEP_25).abs() /
-             uclu.TALEP_25.clip(lower=1)).sort_values(ascending=False, kind='stable')
-    cs_pn = sapma.index[0]
-    grup = c[(c.SUB == c.loc[cs_pn, 'SUB']) & (c.FAMILY == c.loc[cs_pn, 'FAMILY']) & (c.index != cs_pn)]
-    coldstart = dict(
-        pn=cs_pn.replace('PN-', ''), sub=c.loc[cs_pn, 'SUB'], mdl=c.loc[cs_pn, 'MODEL'],
-        q=[int(v) for v in piv.loc[cs_pn, ['Q1', 'Q2', 'Q3', 'Q4']]],
-        prior=r(grup.TALEP_25.mean() / 4, 2),              # analog grubun ortalama çeyrek talebi
-        gercek=r(c.loc[cs_pn, 'TALEP_25'] / 4, 2),
-        grup_n=len(grup), grup_ad=f"{c.loc[cs_pn, 'SUB']} × {c.loc[cs_pn, 'FAMILY']}",
-    )
 
     # =====================================================================
     # DERİN ANALİZ KATMANI — belirsizlik denemeleri · duyarlılık · optimizasyon · backtest
@@ -515,8 +480,7 @@ def build_payload():
 
     return dict(kpi=kpi, band=band_out, model=model_ser, kat=kat_ser, ceyrek=ceyrek,
                 harita=harita, pn=pn,
-                lookup=lookup, roi=roi, ml=ml_out, mlSeg=ml_seg, abcxyz=abcxyz,
-                coldstart=coldstart,
+                lookup=lookup, roi=roi, ml=ml_out, abcxyz=abcxyz,
                 mc=mc, tornado=tornado, opt=opt, backtest=backtest, params=P)
 
 

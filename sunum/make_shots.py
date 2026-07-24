@@ -24,7 +24,7 @@ UST = 64                  # sabit üst bar; kadraj bunun altında kalsın
 SHOTS = [
     ('karar',   'karar',    ['#v-karar .grid.g4', '#v-karar .grid.g21'],        'c'),  # KPI şeridi + yönlendirici/alarm
     ('watch',   'watch',    ['#v-watch .card'],                                 'c'),  # filtreler + risk tablosu
-    ('ongoru',  'ongoru',   ['#cBant||.card', '#cKat||.card'],                  'c'),  # 2033 bandı · göç · kategori
+    ('ongoru',  'ongoru',   ['#cModel||.card', '#cKat||.card'],                 'c'),  # model bazında talep · göç · kategori
     ('harita',  'harita',   ['svgfit:#hSvg'],                                   'c'),  # Türkiye haritasının çizili alanı
     ('senaryo', 'senaryo',  ['#scK', '#cScen'],                                 'l'),  # kriz KPI şeridi + etki grafiği
     ('ongoru',  'cekirdek', ['#cBt||.grid'],                                    'c'),  # geri test + doğrulama bloğu
