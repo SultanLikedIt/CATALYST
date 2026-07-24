@@ -14,15 +14,36 @@ const mM   = n => '$' + f1(n) + 'M';
 const mUsd = n => '$' + fmt(n);
 const pct  = (n, d = 1) => '%' + Number(n).toLocaleString('tr-TR', {minimumFractionDigits: d, maximumFractionDigits: d});
 
-const C = {teal:'#4FC1B0', amber:'#E8A33D', red:'#E06A6A', blue:'#5B8FD6', violet:'#9B8CE8',
-           dim:'#77869C', muted:'#9AA8C0', text:'#EAF0F7', line:'#263450', panel2:'#182338'};
+/* Açık teknik gri tema. Renk yalnız durum taşır; marka kırmızısı hiçbir grafik serisinde kullanılmaz. */
+const C = {
+  bg:'#F5F6F7', panel:'#FFFFFF', panel2:'#F0F2F4', panel3:'#E8EBEE',
+  line:'#D8DCE0', lineSoft:'#E6E9EC', axis:'#C7CDD3',
+  text:'#1A1D21', muted:'#5A6472', dim:'#8A929C',
+  marka:'#E01933',                                  // yalnız kimlik
+  iyi:'#0E6B4A', uyari:'#8A6000', kritik:'#C1121F', bilgi:'#2C5AA0', mor:'#5B4B8A',
+  gri:'#6E7783',                                    // kıyas/arka plan serisi
+};
+/* anlamsal takma adlar — eski çağrı noktaları tek satır değişmeden temaya uyar */
+C.teal = C.iyi; C.amber = C.uyari; C.red = C.kritik; C.blue = C.bilgi; C.violet = C.mor;
 
 Chart.defaults.color = C.muted;
-Chart.defaults.borderColor = 'rgba(38,52,80,.55)';
-Chart.defaults.font.family = "'Inter',system-ui,sans-serif";
+Chart.defaults.borderColor = C.lineSoft;
+Chart.defaults.font.family = "ui-sans-serif,system-ui,-apple-system,'Segoe UI',sans-serif";
 Chart.defaults.font.size = 11.5;
 Chart.defaults.plugins.legend.labels.boxWidth = 11;
 Chart.defaults.plugins.legend.labels.boxHeight = 11;
+/* Chart.js varsayılan ipucu kutusu koyu (rgba(0,0,0,.8) + beyaz metin) — açık temada ters durur. */
+Object.assign(Chart.defaults.plugins.tooltip, {
+  backgroundColor:'#FFFFFF', titleColor:C.text, bodyColor:C.muted,
+  borderColor:'#B6BDC7', borderWidth:1, multiKeyBackground:'#FFFFFF',
+  padding:9, cornerRadius:3, displayColors:true, boxPadding:3,
+});
+/* opak tint: alfa açık zeminde rengi kaybettiriyor, ton ile hiyerarşi kuruyoruz */
+function tint(hex, k){
+  const n = parseInt(hex.slice(1), 16), r = n >> 16, g = (n >> 8) & 255, b = n & 255;
+  const m = v => Math.round(v + (255 - v) * (1 - k));
+  return `rgb(${m(r)},${m(g)},${m(b)})`;
+}
 
 /* bayraklar: build_dashboard.py ile birebir */
 const FL = {KIRMIZI:1, SIP:2, R547:4, BER:8, PO:16, YENI:32, SCRAPA:64, POOLB:128};
@@ -32,15 +53,15 @@ const PIDX = {}; PN.id.forEach((v, i) => PIDX[v] = i);
 PN.durum = PN.id.map((_, i) => hasF(i, FL.SIP) ? 4 : hasF(i, FL.KIRMIZI) ? 3
                              : hasF(i, FL.R547) ? 2 : hasF(i, FL.BER) ? 1 : 0);
 
-const KR_RENK = ['#E06A6A', '#E8A54C', '#56688C'];
+const KR_RENK = ['#C1121F', '#B87500', '#8A929C'];
 const krDot = i => `<span class="sdot" style="background:${KR_RENK[PN.kr[i]]}" title="${LK.kr[PN.kr[i]]}"></span>`;
 
 function foldTr(s){
   const map = {'ı':'i','İ':'i','ş':'s','Ş':'s','ğ':'g','Ğ':'g','ü':'u','Ü':'u','ö':'o','Ö':'o','ç':'c','Ç':'c'};
   return s.replace(/[ıİşŞğĞüÜöÖçÇ]/g, ch => map[ch]).toLowerCase();
 }
-function lerpColor(t){ // 0..1 → panel2 → amber → red
-  const stops = [[34,48,76],[152,101,38],[224,106,106]];
+function lerpColor(t){ // 0..1 → açık zemin → uyarı → kritik (açık temada rampa açıktan koyuya)
+  const stops = [[240,242,244],[226,199,150],[193,18,31]];
   const seg = t < .5 ? 0 : 1, u = (t - seg * .5) / .5;
   const a = stops[seg], b = stops[seg + 1];
   return `rgb(${Math.round(a[0]+(b[0]-a[0])*u)},${Math.round(a[1]+(b[1]-a[1])*u)},${Math.round(a[2]+(b[2]-a[2])*u)})`;
@@ -64,6 +85,126 @@ function poissonMin(mu, h){
   while(cdf < h && k < 3000){ k++; term *= mu / k; cdf += term; }
   return Math.ceil(mu) + Math.max(0, k - mu);
 }
+/* P(tedarik süresi boyunca gelen talep ≤ s) — "stok yeterlilik olasılığı".
+   Hem parça eğrisi hem önerilen aksiyonun risk öncesi/sonrası değeri buradan okunur. */
+function poisCdf(mu, s){
+  if(mu <= 0) return 1;
+  if(s < 0) return 0;
+  if(mu > 100){
+    const phi = z => .5 * (1 + Math.tanh(Math.sqrt(Math.PI / 8) * z * (1 + .044715 * z * z)));
+    return Math.min(1, Math.max(0, phi((s + .5 - mu) / Math.sqrt(mu))));
+  }
+  let term = Math.exp(-mu), acc = term;
+  for(let k = 1; k <= s; k++){ term *= mu / k; acc += term; }
+  return Math.min(1, acc);
+}
+/* Tedarik penceresinde beklenen eksik adet ve ikinci momenti.
+   (D−s)+ için doğrudan kuyruk toplamı: E1 = Σ(k−s)p(k), E2 = Σ(k−s)²p(k).
+   Kuyruk pmf ihmal edilir hale gelince durur — parça başına ~40 terim. */
+function eksikMoment(mu, s){
+  if(mu <= 0) return [0, 0];
+  const k0 = Math.max(0, Math.floor(s) + 1);
+  let p, E1 = 0, E2 = 0;
+  if(mu > 500) return [Math.max(0, mu - s), mu];                 // pratikte oluşmaz
+  /* p(k0) — küçük mu'da doğrudan, büyükte log üzerinden taşma korumalı */
+  let lg = -mu + k0 * Math.log(Math.max(mu, 1e-12));
+  for(let j = 2; j <= k0; j++) lg -= Math.log(j);
+  p = Math.exp(lg);
+  for(let k = k0, n = 0; n < 4000; k++, n++){
+    const d = k - s;
+    E1 += d * p; E2 += d * d * p;
+    p *= mu / (k + 1);
+    if(p < 1e-12 && k > mu) break;
+  }
+  return [Math.max(0, E1), Math.max(0, E2)];
+}
+function beklenenEksik(mu, s){ return eksikMoment(mu, s)[0]; }
+
+/* =====================================================================
+   KARAR MOTORU — tek karar yolu
+   ladderOps → kanalSec zinciri hem watchlist'teki önerilen aksiyonu hem
+   Karar Merkezi'ndeki toplu yönlendirmeyi besler; iki ekran çelişemez.
+   ===================================================================== */
+function ladderOps(i){
+  const ops = [];
+  if(PN.exin[i] + PN.exout[i] > 0)
+    ops.push({t:'pool', ad:'Havuzdan değişim', sm:'değişim ağı bugün de işliyor', gun:3, m:.10 * PN.clp[i], tag:'ücret varsayımı liste fiyatının %10\'u'});
+  if(PN.ato[i] && PN.tic[i] != null)
+    ops.push({t:'ictamir', ad:'İç atölye tamiri', sm:'iç tamir mümkün', gun:PN.tic[i], m:PN.icrep[i]});
+  ops.push({t:'distamir', ad:'Dış tamir', sm:hasF(i,FL.BER) ? 'dikkat: bu parçada tamir ekonomik değil' : 'standart tamir kanalı', gun:PN.tdis[i], m:PN.disrep[i]});
+  ops.push({t:'hizli', ad:'Hızlandırılmış dış tamir', sm:'ek ücretle öne alınır', gun:Math.ceil(PN.tdis[i]*.6), m:PN.disrep[i]*1.5, tag:'süre 0,6 katına iner, maliyet 1,5 kat'});
+  ops.push({t:'alim', ad:'Yeni satın alma', sm:'üreticiden sıfır tedarik', gun:PN.tsat[i], m:PN.clp[i]});
+  if(PN.gay[i] > 0)
+    ops.push({t:'sokum', ad:'Donörden söküm', sm:PN.gay[i] + ' arızalı donör rafta bekliyor', gun:1, m:null, tag:'kayıt altında, borç defterine işlenir'});
+  ops.sort((a,b) => a.gun - b.gun);
+  return ops;
+}
+
+/* En hızlı GERÇEK tedarik kanalı: donörden söküm kanal sayılmaz (yalnız köprü),
+   hurda adayında tamir kanalları elenir (tamir ekonomik değil). */
+function kanalSec(i){
+  const ops = ladderOps(i), ber = hasF(i, FL.BER);
+  const tamirKanali = t => t === 'ictamir' || t === 'distamir' || t === 'hizli';
+  const uygun = ops.filter(o => o.t !== 'sokum' && !(ber && tamirKanali(o.t)));
+  return {ops, best: uygun[0] || ops[0]};
+}
+
+const BIRIM = {pool:'Havuz ve değişim masası', ictamir:'Atölye planlama', distamir:'Dış tedarik',
+               hizli:'Dış tedarik', alim:'Satınalma', sokum:'Depo'};
+
+/* kanal kovası: iç/dış/hızlı tamir tek "tamir" kovasında toplanır */
+const KOVA = {pool:'pool', ictamir:'tamir', distamir:'tamir', hizli:'tamir', alim:'alim'};
+const KANAL_AD  = {pool:'Havuz / exchange', tamir:'Tamir döngüsü', alim:'Yeni satın alma', izle:'İzle', fazla:'Fazla stok'};
+const PENCERE_AD = {gecmis:'sipariş penceresi geçmiş', gecmis0:'penceresi geçmiş · siparişsiz',
+                    p030:'0–30 gün', p3090:'30–90 gün', p90:'90+ gün / stratejik'};
+
+/* Tüm filo tek geçişte: kanal, sipariş penceresi, fazla stok, kapatma maliyeti.
+   Pencere = sipariş için kalan gün = dayanma süresi (TTS) − tedarik süresi. */
+let KMD = null;
+function kararMotoru(){
+  if(KMD) return KMD;
+  const kanal = new Array(NPN), pencere = new Array(NPN), kalan = new Array(NPN);
+  const say = {izle:0, pool:0, tamir:0, alim:0}, mal = {pool:0, tamir:0, alim:0};
+  const pen = {gecmis:{n:0, mal:0, sip0:0, poVar:0}, p030:{n:0, mal:0}, p3090:{n:0, mal:0}, p90:{n:0, mal:0}};
+  const alarm = [], fazlaIdx = [];
+  let fazlaAdet = 0, fazlaDeger = 0, enGec = 0;
+  for(let i = 0; i < NPN; i++){
+    const acik = Math.max(PN.min33[i] - PN.svc[i], 0);
+    const k = kalan[i] = PN.tts[i] >= 9999 ? Infinity : PN.tts[i] - PN.lead[i];
+    const p = pencere[i] = k < 0 ? 'gecmis' : k < 30 ? 'p030' : k < 90 ? 'p3090' : 'p90';
+    let kap = 0;
+    if(acik === 0) { kanal[i] = 'izle'; say.izle++; }
+    else {
+      const {best} = kanalSec(i), kv = KOVA[best.t];
+      kanal[i] = kv; say[kv]++;
+      kap = acik * (best.m || 0);
+      mal[kv] += kap;
+    }
+    pen[p].n++; pen[p].mal += kap;
+    if(p === 'gecmis'){
+      if(PN.po[i] === 0){ pen.gecmis.sip0++; alarm.push(i); enGec = Math.max(enGec, -k); }
+      else pen.gecmis.poVar++;
+    }
+    const fz = PN.svc[i] - PN.max33[i];
+    if(fz > 0){ fazlaIdx.push(i); fazlaAdet += fz; fazlaDeger += fz * PN.fmv[i]; }
+  }
+  alarm.sort((a, b) => kalan[a] - kalan[b]);
+  fazlaIdx.sort((a, b) => (PN.svc[b] - PN.max33[b]) * PN.fmv[b] - (PN.svc[a] - PN.max33[a]) * PN.fmv[a]);
+  KMD = {kanal, pencere, kalan, say, mal, pen, alarm, enGec,
+         fazla: {idx: fazlaIdx, n: fazlaIdx.length, adet: fazlaAdet, deger: fazlaDeger},
+         aksiyon: say.pool + say.tamir + say.alim, kapTop: mal.pool + mal.tamir + mal.alim};
+  return KMD;
+}
+
+/* Karar Merkezi → Watchlist köprüsü: listeyi seçilen kanala/pencereye süzülü açar */
+function kmWatch(f){
+  showView('watch');
+  if(!W.ready) return;
+  W.reset();
+  W.kanal = f.kanal || ''; W.pencere = f.pencere || '';
+  W.apply();
+  window.scrollTo(0, 0);
+}
 
 /* =====================================================================
    YERLEŞİM
@@ -83,7 +224,7 @@ document.body.insertAdjacentHTML('afterbegin', `
     <span class="mono">core.py</span> ile hesaplanır.</p>
   </header>
 
-  <div id="v-kokpit" class="view"></div>
+  <div id="v-karar"  class="view"></div>
   <div id="v-watch"  class="view"></div>
   <div id="v-ongoru" class="view"></div>
   <div id="v-harita" class="view"></div>
@@ -105,7 +246,7 @@ document.body.insertAdjacentHTML('afterbegin', `
 </div>
 `);
 
-const TABS = [['kokpit','KOKPİT'],['watch','WATCHLIST'],['ongoru','ÖNGÖRÜ & AI'],['harita','HARİTA'],['senaryo','SENARYO']];
+const TABS = [['karar','KARAR MERKEZİ'],['watch','WATCHLIST'],['ongoru','ÖNGÖRÜ & AI'],['harita','HARİTA'],['senaryo','SENARYO']];
 $('tabs').innerHTML = TABS.map(([k,l]) => `<button class="tab" data-v="${k}">${l}</button>`).join('');
 
 const rendered = {};
@@ -118,124 +259,171 @@ function showView(name){
 $('tabs').addEventListener('click', e => { const b = e.target.closest('.tab'); if(b) showView(b.dataset.v); });
 
 /* =====================================================================
-   1 · KOKPİT — sermaye kokpiti + bugünün sağlığı
+   1 · KARAR MERKEZİ — filo tek bakışta: kanal dağılımı, sipariş penceresi,
+        alarm akışı ve fazla stok dengeleme. Her satır ilgili ekrana köprülüdür.
    ===================================================================== */
-function renderKokpit(){
-  const el = $('v-kokpit');
+const KMR = {pool:C.iyi, tamir:C.bilgi, alim:C.uyari, izle:C.gri, fazla:C.mor};
+
+function renderKarar(){
+  const el = $('v-karar'), d = kararMotoru();
+  const KISA = {pool:'HAVUZ', tamir:'TAMİR', alim:'SATIN ALMA', izle:'İZLE'};
+  const enB = Math.max(d.say.izle, d.say.pool, d.say.tamir, d.say.alim);
+  const yuz = n => pct(100 * n / NPN, 1);
+  const rozet = k => `<span class="bg" style="background:${KMR[k]}22;color:${KMR[k]};border:1px solid ${KMR[k]}55">${KISA[k]}</span>`;
+
+  /* --- karar yönlendirici satırı --- */
+  const krow = (k, ad, desc, n, malM) => `
+    <div class="krow" data-k="${k}" title="Watchlist'te bu kanala süzülü aç">
+      <div class="kl"><span class="bg" style="background:${KMR[k]}22;color:${KMR[k]};border:1px solid ${KMR[k]}55">${ad}</span>
+        <small>${desc}</small></div>
+      <div class="bar-track" style="height:8px"><i style="width:${Math.max(2, 100 * n / enB)}%;background:${KMR[k]}"></i></div>
+      <div class="ksag"><b>${fmt(n)}</b><span>${yuz(n)}</span>
+        <small>${malM == null ? 'bugün harcama yok' : 'kapatma ' + mM(malM / 1e6)}</small></div>
+    </div>`;
+
+  /* --- alarm satırları: pencere kaçmış + siparişsiz, en geç kalan önce --- */
+  const alarmHtml = d.alarm.slice(0, 9).map(i => `
+    <div class="alarmi" data-i="${i}" title="Parça detayını aç">
+      <span class="sdot" style="background:${C.red}"></span>
+      <b class="mono" style="color:${C.teal};font-size:.8rem">PN-${PN.id[i]}</b>
+      <span class="as">${LK.sub[PN.sub[i]]} · ${LK.mdl[PN.mdl[i]]}</span>
+      ${rozet(d.kanal[i])}
+      <b class="ag">−${fmt(-d.kalan[i])}g</b>
+    </div>`).join('');
+
+  /* --- planlama ufku kartları --- */
+  const UFUK = [
+    ['gecmis', 'BUGÜN', 'sipariş penceresi geçmiş', C.red,
+      `${fmt(d.pen.gecmis.sip0)} parçada sipariş yok — köprü kanalı + acil sipariş`],
+    ['p030', '0–30 GÜN', 'acil pencere', C.amber, 'sipariş ya da tamir emri bu ay açılmalı'],
+    ['p3090', '30–90 GÜN', 'yaklaşan', C.blue, 'tedarik planına al, bütçeyi ayır'],
+    ['p90', '90+ GÜN', 'stratejik', C.teal, 'min-max bandını izle, atölye yatırımını planla'],
+  ];
+  const ufukHtml = UFUK.map(([p, ad, alt, renk, eylem]) => { const u = d.pen[p]; return `
+    <div class="ufuk" data-p="${p}" style="border-top-color:${renk}" title="Watchlist'te bu pencereye süzülü aç">
+      <div class="ul_" style="color:${renk}">${ad}</div><div class="up_">${alt}</div>
+      <b class="uv mono">${fmt(u.n)}</b>
+      <div class="ud">PN · ${yuz(u.n)}${u.mal > 0 ? ' · kapatma ' + mM(u.mal / 1e6) : ''}</div>
+      <div class="ua">${eylem}</div>
+    </div>`; }).join('');
+
+  /* --- fazla stok dengeleme: temsilî kaynak/hedef, harita köprüsü gerçek --- */
+  const KAY = ['IST', 'ESB', 'ADB'];                                   // haritadaki depo yelpazesiyle aynı küme
+  const HK = DATA.harita.kod, HAD = DATA.harita.ad;
+  const hatlar = HK.filter((k, j) => DATA.harita.depo[j] === 'hat_stok');
+  const adOf = k => HAD[HK.indexOf(k)];
+  const trfHtml = d.fazla.idx.slice(0, 9).map(i => {
+    const pnNum = +PN.id[i], fz = PN.svc[i] - PN.max33[i];
+    const kay = KAY[pnNum % KAY.length], hed = hatlar[(pnNum >> 3) % hatlar.length];
+    return `
+    <div class="trf" data-i="${i}" data-h="${hed}">
+      <div class="th_"><b class="mono" style="color:${C.teal}">PN-${PN.id[i]}</b>${krDot(i)}
+        <span>${LK.sub[PN.sub[i]]} · ${LK.mdl[PN.mdl[i]]}</span></div>
+      <div class="tr_">
+        <span class="tk_"><small>kaynak</small><b>${kay}</b><i>${adOf(kay)}</i></span>
+        <span class="tok">→</span>
+        <span class="tk_ hedef"><small>hedef</small><b>${hed}</b><i>${adOf(hed)}</i></span>
+      </div>
+      <div class="tf_"><span><b>${fmt(fz)}</b> adet fazla</span>
+        <span class="chip tgo" data-i="${i}" data-h="${hed}" style="padding:1px 9px;font-size:.64rem">🗺 rotayı çiz</span>
+        <span class="tdeg">${mUsd(fz * PN.fmv[i])}</span></div>
+    </div>`; }).join('');
+
   el.innerHTML = `
-  <div class="callout red">
-    <span class="tag">Alarm</span>
-    <div style="display:flex;gap:20px;align-items:center;flex-wrap:wrap">
-      <span class="big">${K.siparissiz} PN</span>
-      <p style="margin:0;flex:1;min-width:240px"><strong>kırmızıda ve açık siparişi yok.</strong>
-      ${K.siparissiz_aog}'i AOG kritik. Kırmızı liste toplam ${K.kirmizi} parça, kapatma maliyeti <b>${mM(K.kapatma)}</b>.</p>
-      <button class="btn danger" data-goto="watch" data-preset="siparissiz">Listeyi aç →</button>
-    </div>
-  </div>
+  <h2 class="sec-h">Karar merkezi</h2>
+  <p class="sec-p">${fmt(NPN)} parça tek kural dizisinden geçer, her biri tek kanala düşer. Kanal seçimi
+  watchlist'teki önerilen aksiyonla aynı koddan gelir — iki ekran çelişemez. Satırlar tıklanır: liste,
+  parça detayı ya da harita rotası açılır.</p>
 
-  <div class="grid auto">
-    <div class="kpi teal"><div class="l">Fiziksel envanter değeri</div><div class="v">${mM(K.fmv)}</div>
-      <div class="d">Sıfırdan alım değeri ${mM(K.clp)} · ikinci el oranı ortalama ${String(K.fmv_clp_medyan).replace('.',',')}</div></div>
-    <div class="kpi amber"><div class="l">Hurda ikame bütçesi</div><div class="v">${mM(K.scrap_butce)}<span style="font-size:.85rem">/yıl</span></div>
-      <div class="d">En büyük para kalemi · ${fmt(K.ber_pn)} parça BER eşiğinin üstünde</div></div>
-    <div class="kpi"><div class="l">Tamir döngüsü sermayesi</div><div class="v">${mM(K.float_fmv)}</div>
-      <div class="d">Tahmin ${fmt(K.float_adet)}, sahada ${fmt(K.tamirde_adet)} adet · <b style="color:${C.teal}">%97 isabet</b> · 2033'te ${mM(K.float_fmv_33)}</div></div>
-    <div class="kpi red"><div class="l">Kırmızı liste</div><div class="v">${K.kirmizi} PN</div>
-      <div class="d">${K.siparissiz} siparişsiz · ${K.kirmizi_aog} kritik · dayanma süresi ortalama ${fmt(K.tts_medyan)} gün</div></div>
-    <div class="kpi"><div class="l">2033 talep aralığı</div><div class="v">+%${Math.round(B.alt_pct)}–${Math.round(B.ust_pct)}</div>
-      <div class="d">${fmt(B.talep_2025)} → ${fmt(B.alt)}–${fmt(B.ust)} · asıl kırılma dağılımda: yeni nesil %34→%65</div></div>
-    <div class="kpi amber"><div class="l">Risk listesi</div><div class="v">${K.risk_listesi} PN</div>
-      <div class="d">Kritik ama iç tamiri yok · ${K.uclu} tanesi geçmişsiz yeni nesilde</div></div>
-  </div>
-
-  <div class="grid g3">
-    <div class="card"><h3 style="color:${C.amber}">Hurda ikamesi · ${mM(K.scrap_butce)}/yıl</h3>
-      <div class="hint">${fmt(K.scrap25)} parça/yıl, talebin ${pct(K.scrap_oran)}'i · BER kuralı ${fmt(K.ber_pn)} parçada devrede.</div></div>
-    <div class="card"><h3 style="color:${C.blue}">Tamir döngüsü · ${mM(K.float_fmv)} → ${mM(K.float_fmv_33)}</h3>
-      <div class="hint">Kabiliyet yatırımı: yılda ${mM(K.kab_tasarruf)} tasarruf + ${mM(K.kab_sermaye)} serbesti. Bugünkü dış tamir ${mM(K.kab_bugun)}/yıl.</div></div>
-    <div class="card"><h3 style="color:${C.violet}">Emekli filo stoğu · ${mM(K.phaseout)}</h3>
-      <div class="hint">Envanterin ${pct(K.phaseout_pct)}'si küçülen 4 modelde · eritme sinyale bağlı.</div></div>
-  </div>
-
-  <div class="grid g2">
-    <div class="card"><h3>Pool / değişim trafiği
-      <span class="bg bg-warn" style="vertical-align:2px;margin-left:6px">VERİ ANOMALİSİ</span></h3>
-      <div class="hint">Yılda <b>${fmt(K.exch_in)} giriş, ${fmt(K.exch_out)} çıkış</b> · havuza bağımlı ${K.pool_bagimli} parça.
-      THY uçağı ${f1(B.thy_ucak_basi)}, pool uçağı ${f1(B.pool_ucak_basi)} parça/yıl talep ediyor, 3,6 kat fark anomali işaretli.</div>
-      <div style="height:130px"><canvas id="cPool"></canvas></div></div>
-    <div class="card"><h3>Gayrifaal karar kuyruğu</h3>
-      <div class="grid g3" style="margin:10px 0 4px">
-        <div class="kpi" style="padding:11px 13px"><div class="l">Bekleyen parça</div><div class="v" style="font-size:1.25rem">${fmt(K.gayrifaal_adet)}</div><div class="d">arızalı, karar bekliyor</div></div>
-        <div class="kpi amber" style="padding:11px 13px"><div class="l">Faale döndürme</div><div class="v" style="font-size:1.25rem">${mM(K.gayrifaal_tamir)}</div><div class="d">tahmini tamir maliyeti</div></div>
-        <div class="kpi teal" style="padding:11px 13px"><div class="l">Kazanılacak değer</div><div class="v" style="font-size:1.25rem">${mM(K.gayrifaal_fmv)}</div><div class="d">piyasa değeri</div></div>
-      </div></div>
+  <div class="grid g4">
+    <div class="kpi amber"><div class="l">Aksiyon gerektiren parça</div><div class="v">${fmt(d.aksiyon)}</div>
+      <div class="d">${fmt(NPN)} parça içinde pay ${yuz(d.aksiyon)} — kalan ${fmt(d.say.izle)} izlemede</div></div>
+    <div class="kpi red"><div class="l">Sipariş penceresi kaçmış</div><div class="v">${fmt(d.alarm.length)}</div>
+      <div class="d">sipariş açılmamış · en geç −${fmt(d.enGec)} gün</div></div>
+    <div class="kpi teal"><div class="l">Toplam kapatma maliyeti</div><div class="v">${mM(d.kapTop / 1e6)}</div>
+      <div class="d">açık adet × her parçanın en hızlı kanal birim maliyeti</div></div>
+    <div class="kpi"><div class="l">Fazla stok</div><div class="v" style="color:${C.violet}">${mM(d.fazla.deger / 1e6)}</div>
+      <div class="d">${fmt(d.fazla.n)} parça · ${fmt(d.fazla.adet)} adet — transferle değerlenebilir</div></div>
   </div>
 
   <div class="grid g21">
-    <div class="card"><h3>Sermaye nerede duruyor?</h3>
-      <div class="hint">Fiziksel envanter ${mM(K.fmv)} değerinde. Ayrıca ${mM(K.po_clp)} tutarında açık sipariş yolda.</div>
-      <div style="height:265px"><canvas id="cCap"></canvas></div></div>
-    <div class="card"><h3>İki ayrı Pareto: operasyon ile sermaye farklı</h3>
-      <div class="hint">Adette az sayıda parça öne çıkmıyor, en çok talep gören 20 parça talebin yalnızca ${pct(K.adet_top20)}'i.
-      Değerde ise 500 parça değerin ${pct(K.deger_top500)}'ini taşıyor. Bu yüzden operasyonu geniş, sermayeyi dar yönetiyoruz.</div>
-      <div style="height:245px"><canvas id="cPareto"></canvas></div></div>
+    <div class="card">
+      <h3>Karar yönlendirici</h3>
+      <div class="hint">Kanal, aksiyon merdivenindeki en hızlı gerçek tedarik yoludur; donörden söküm
+      kanal sayılmaz, hurda adayında tamir elenir. Kapatma = açık adet × kanalın birim maliyeti.</div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        ${krow('pool', 'HAVUZ / EXCHANGE', 'değişim ağı bugün de işliyor — açık 3 günde kapanır', d.say.pool, d.mal.pool)}
+        ${krow('tamir', 'TAMİR DÖNGÜSÜ', 'iç atölye ya da hızlandırılmış dış tamir', d.say.tamir, d.mal.tamir)}
+        ${krow('alim', 'YENİ SATIN ALMA', 'tamir kanalı yok ya da ekonomik değil — tek yol tedarik', d.say.alim, d.mal.alim)}
+        ${krow('izle', 'İZLE', 'stok MIN üzerinde, bugün aksiyon gerekmez', d.say.izle, null)}
+      </div>
+      <div style="border-top:1px solid var(--line-soft);margin-top:10px;padding-top:10px">
+        ${krow('fazla', 'FAZLA STOK', 'İZLE içinden: MAX üstü adet başka istasyonda değerlenebilir', d.fazla.n, null)
+          .replace('bugün harcama yok', mM(d.fazla.deger / 1e6) + ' bağlı sermaye')}
+      </div>
+    </div>
+    <div class="card">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <h3 style="color:${C.red}">Sipariş penceresi alarmı</h3>
+        <span class="bg bg-red" style="margin-left:auto">${fmt(d.alarm.length)} parça</span>
+      </div>
+      <div class="hint">Kalan gün = dayanma süresi (TTS) − tedarik süresi; eksi değer, siparişin
+      bugünden önce açılmış olması gerektiğini söyler. Yalnız siparişi açılmamış parçalar listelenir.</div>
+      <div style="display:flex;flex-direction:column;gap:6px">${alarmHtml}</div>
+      <div class="hint" style="margin-top:10px">${fmt(K.siparissiz)} siparişsiz kırmızıdan ${fmt(d.pen.gecmis.sip0)} parça
+      pencereyi de kaçırdı; ${fmt(d.pen.gecmis.poVar)} parçada pencere geçti ama sipariş yolda.
+      <span class="chip" data-tum="1" style="margin-left:6px;padding:1px 9px;font-size:.66rem">tümünü watchlist'te aç</span></div>
+    </div>
   </div>
 
-  <div class="card"><h3>Kırmızı liste: kritikliğe göre dağılım</h3>
-      <div class="hint">Stok, yenisi gelene kadar yetmiyorsa parça kırmızıya düşer. "Siparişsiz" olanlarda uyarı var ama aksiyon yok.</div>
-      <div style="height:235px"><canvas id="cDurum"></canvas></div></div>
+  <div class="card">
+    <h3>Planlama ufku</h3>
+    <div class="hint">Her parça, sipariş için kalan güne göre bir pencereye düşer. Pencere, "ne zaman
+    davranmalı" sorusunun cevabıdır; kanal "nasıl" sorusunun.</div>
+    <div class="grid g4" style="margin:0">${ufukHtml}</div>
+  </div>
 
-  `;
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:10px;margin-bottom:11px">
+      <div>
+        <h3>Fazla stok dengeleme</h3>
+        <div class="hint" style="margin:0">Fazla üniteyi ihtiyaç olan istasyona aktar — satın alma yerine yeniden dağıt.
+        ${fmt(d.fazla.n)} parçadan ilk 9, serbest kalacak değere göre. Kaynak/hedef eşlemesi temsilîdir;
+        üründe istasyon etiketli stok kaydından gelir.</div>
+      </div>
+      <div style="text-align:right">
+        <div style="color:${C.dim};font-size:.72rem;text-transform:uppercase;letter-spacing:.06em">Serbest kalabilecek sermaye</div>
+        <b class="mono" style="font-size:1.45rem;color:${C.violet}">${mM(d.fazla.deger / 1e6)}</b>
+        <div style="color:${C.dim};font-size:.72rem">piyasa değeriyle (FMV)</div>
+      </div>
+    </div>
+    <div class="grid g3" style="margin:0">${trfHtml}</div>
+  </div>
 
-  /* sermaye doughnut */
-  const kalan = +(K.fmv - K.svc_fmv - K.tamirde_fmv - K.gayrifaal_fmv).toFixed(1);
-  new Chart($('cCap'), {type:'doughnut',
-    data:{labels:[`Kullanılabilir stok: ${mM(K.svc_fmv)}`,`Tamir döngüsünde: ${mM(K.tamirde_fmv)}`,
-                  `Gayrifaal, karar bekliyor: ${mM(K.gayrifaal_fmv)}`,`Değişim ve diğer: ${mM(kalan)}`],
-      datasets:[{data:[K.svc_fmv,K.tamirde_fmv,K.gayrifaal_fmv,kalan],
-        backgroundColor:[C.teal,C.blue,C.red,C.dim],borderColor:'#0B1220',borderWidth:3}]},
-    options:{maintainAspectRatio:false,cutout:'62%',
-      plugins:{legend:{position:'right'},tooltip:{callbacks:{label:c=>' '+mM(c.parsed)}}}}});
-
-  /* Pareto */
-  new Chart($('cPareto'), {type:'line',
-    data:{datasets:[
-      {label:'Değer (FMV) payı',data:DATA.pareto.x.map((x,i)=>({x,y:DATA.pareto.deger[i]})),borderColor:C.amber,backgroundColor:C.amber,pointRadius:0,borderWidth:2,tension:.25},
-      {label:'Talep adedi payı',data:DATA.pareto.x.map((x,i)=>({x,y:DATA.pareto.adet[i]})),borderColor:C.blue,backgroundColor:C.blue,pointRadius:0,borderWidth:2,tension:.25},
-      {label:'%80 çizgisi',data:[{x:0,y:80},{x:100,y:80}],borderColor:C.dim,borderDash:[5,5],pointRadius:0,borderWidth:1}]},
-    options:{maintainAspectRatio:false,scales:{
-      x:{type:'linear',min:0,max:100,ticks:{callback:v=>'%'+v},title:{display:true,text:'PN yüzdesi (değere/adede göre sıralı)'}},
-      y:{min:0,max:100,ticks:{callback:v=>'%'+v}}},
-      plugins:{tooltip:{callbacks:{title:it=>'PN %'+f1(it[0].parsed.x),label:c=>` ${c.dataset.label}: %${f1(c.parsed.y)}`}}}}});
-
-  /* kırmızı kırılımı */
-  const kir=[0,0,0], sip=[0,0,0];
-  for(let i=0;i<NPN;i++){ if(hasF(i,FL.KIRMIZI)){kir[PN.kr[i]]++; if(hasF(i,FL.SIP))sip[PN.kr[i]]++;} }
-  new Chart($('cDurum'), {type:'bar',
-    data:{labels:LK.kr,datasets:[
-      {label:'Kırmızı PN',data:kir,backgroundColor:'rgba(224,106,106,.75)',borderRadius:4},
-      {label:'… içinde siparişsiz',data:sip,backgroundColor:'rgba(232,163,61,.8)',borderRadius:4}]},
-    options:{maintainAspectRatio:false,scales:{y:{beginAtZero:true,ticks:{precision:0}}}}});
-
-  /* pool anomalisi: uçak başına yıllık talep */
-  new Chart($('cPool'), {type:'bar',data:{labels:['THY uçağı','Pool uçağı'],
-    datasets:[{label:'Uçak başına yıllık parça talebi',data:[B.thy_ucak_basi,B.pool_ucak_basi],
-      backgroundColor:['rgba(91,143,214,.8)','rgba(79,193,176,.8)'],borderRadius:4,barPercentage:.55}]},
-    options:{maintainAspectRatio:false,indexAxis:'y',plugins:{legend:{display:false},
-      tooltip:{callbacks:{label:c=>` ${f1(c.parsed.x)} adet/uçak-yıl`}}},
-      scales:{x:{beginAtZero:true}}}});
+  <div class="hint" style="margin-top:2px">Kural motoru tarayıcıda çalışır, deterministiktir; dış servis çağrısı yoktur.
+  Sayılar her açılışta ${fmt(NPN)} parçanın güncel gömülü verisinden yeniden hesaplanır.</div>`;
 
   el.addEventListener('click', e => {
-    const b = e.target.closest('[data-goto]'); if(!b) return;
-    showView(b.dataset.goto);
-    if(b.dataset.preset === 'siparissiz' && W.ready){ W.reset(); W.flags.add(FL.SIP); W.apply(); }
+    const tg = e.target.closest('.tgo');
+    if(tg){ showView('harita'); if(H._parcaGoster) H._parcaGoster(+tg.dataset.i, tg.dataset.h, 'depo'); window.scrollTo(0, 0); return; }
+    const tp = e.target.closest('.trf');
+    if(tp){ showView('watch'); if(W.showDetail) W.showDetail(+tp.dataset.i); window.scrollTo(0, 0); return; }
+    const al = e.target.closest('.alarmi');
+    if(al){ showView('watch'); if(W.showDetail) W.showDetail(+al.dataset.i); window.scrollTo(0, 0); return; }
+    if(e.target.closest('[data-tum]')){ kmWatch({pencere:'gecmis0'}); return; }
+    const kr_ = e.target.closest('.krow');
+    if(kr_){ kmWatch({kanal: kr_.dataset.k}); return; }
+    const uf = e.target.closest('.ufuk');
+    if(uf){ kmWatch({pencere: uf.dataset.p}); return; }
   });
 }
 
 /* =====================================================================
    2 · WATCHLIST — 5.000 PN, filtre + sırala + aksiyon merdiveni
    ===================================================================== */
-const W = {ready:false, flags:new Set(), kr:'', qtxt:'', sort:{k:'risk', asc:false}, sel:-1};
+/* karar: parça bazlı aksiyon kaydı — oturum içi, sunucu yok (sayfa yenilenince sıfırlanır)
+   kanal/pencere: Karar Merkezi'nden gelen süzgeçler */
+const W = {ready:false, flags:new Set(), kr:'', qtxt:'', sort:{k:'risk', asc:false}, sel:-1, karar:{}, kanal:'', pencere:''};
 
 function renderWatch(){
   const el = $('v-watch');
@@ -256,11 +444,12 @@ function renderWatch(){
       <span class="chip" data-f="${FL.SCRAPA}">Hurda anomalisi ${K.scrap_anomali}</span>
       <span class="chip" data-f="${FL.POOLB}">Pool bağımlı ${K.pool_bagimli}</span>
       <span class="chip" id="wClear">✕ temizle</span>
+      <span id="wKmf"></span>
     </div>
     <div class="note" style="margin:2px 0 7px">Kritiklik:
-      <span class="sdot" style="background:#E06A6A"></span> AOG, uçağı yerde bırakır ·
-      <span class="sdot" style="background:#E8A54C"></span> kritik ·
-      <span class="sdot" style="background:#56688C"></span> kritik değil
+      <span class="sdot" style="background:${KR_RENK[0]}"></span> AOG, uçağı yerde bırakır ·
+      <span class="sdot" style="background:${KR_RENK[1]}"></span> kritik ·
+      <span class="sdot" style="background:${KR_RENK[2]}"></span> kritik değil
       &nbsp;·&nbsp; Durum, parçanın bugünkü hâlidir · ayrıntı için satıra tıklayın</div>
     <div class="tw"><table id="wTbl"><thead><tr>
       <th>PN</th><th>Model</th><th>Kategori</th><th>Kritiklik</th><th data-k="durum">Durum</th>
@@ -273,10 +462,15 @@ function renderWatch(){
   <div id="wDet"></div>`;
 
   W.ready = true;
-  W.reset = () => { W.flags.clear(); W.kr=''; W.qtxt=''; $('wQ').value=''; $('wKr').value=''; };
+  W.reset = () => { W.flags.clear(); W.kr=''; W.qtxt=''; W.kanal=''; W.pencere=''; $('wQ').value=''; $('wKr').value=''; };
   W.apply = () => {
     document.querySelectorAll('#v-watch .chip[data-f]').forEach(c =>
       c.classList.toggle('on', W.flags.has(+c.dataset.f)));
+    const f = [];
+    if(W.kanal) f.push('kanal: ' + KANAL_AD[W.kanal]);
+    if(W.pencere) f.push('pencere: ' + PENCERE_AD[W.pencere]);
+    $('wKmf').innerHTML = f.length
+      ? `<span class="chip on" data-kmf="1" title="Karar Merkezi süzgecini kaldır">${f.join(' · ')} ✕</span>` : '';
     drawRows();
   };
 
@@ -286,6 +480,7 @@ function renderWatch(){
   el.addEventListener('click', e => {
     const ch = e.target.closest('.chip[data-f]');
     if(ch){ const f = +ch.dataset.f; W.flags.has(f) ? W.flags.delete(f) : W.flags.add(f); W.apply(); return; }
+    if(e.target.closest('[data-kmf]')){ W.kanal = ''; W.pencere = ''; W.apply(); return; }
     const th = e.target.closest('th[data-k]');
     if(th){ const k = th.dataset.k;
       /* üçlü döngü: 1. tık azalan, 2. tık artan, 3. tık varsayılana (risk azalan) dönüş */
@@ -294,19 +489,9 @@ function renderWatch(){
       else { W.sort.k = k; W.sort.asc = false; }
       drawRows(); return; }
     const wg = e.target.closest('.wgo');
-    if(wg){
-      if(!W.hedef){
-        const s = $('wHedef');
-        if(s){ s.style.borderColor = '#E06A6A'; }
-        const n = $('wHedefNot');
-        if(n){ n.textContent = 'önce hedef istasyonu seçin'; n.style.color = '#E06A6A'; }
-        return;
-      }
-      showView('harita');
-      if(H._parcaGoster) H._parcaGoster(W.sel, W.hedef, wg.dataset.t);
-      window.scrollTo(0, 0);
-      return;
-    }
+    if(wg){ haritaya(wg.dataset.t); return; }
+    const kb = e.target.closest('.kbtn');
+    if(kb){ karar(kb.dataset.k); return; }
     const tr = e.target.closest('tr[data-i]');
     if(tr){ W.sel = +tr.dataset.i; drawDetail(W.sel); $('wDet').scrollIntoView({behavior:'smooth', block:'nearest'}); }
   });
@@ -314,13 +499,60 @@ function renderWatch(){
     if(e.target && e.target.id === 'wHedef'){ W.hedef = e.target.value; e.target.style.borderColor = ''; }
   });
 
+  /* rota çizimi hedef istasyon seçilmeden başlamaz — merdiven çipi de, "haritada incele" de buradan geçer */
+  function haritaya(tip){
+    if(!W.hedef){
+      const s = $('wHedef'); if(s) s.style.borderColor = C.kritik;
+      const n = $('wHedefNot');
+      if(n){ n.textContent = 'önce hedef istasyonu seçin'; n.style.color = C.kritik; }
+      return false;
+    }
+    showView('harita');
+    if(H._parcaGoster) H._parcaGoster(W.sel, W.hedef, tip);
+    window.scrollTo(0, 0);
+    return true;
+  }
+
+  /* Aksiyon kararı: sunucu yok, karar oturum içinde kayda geçer ve listede işaretlenir. */
+  function karar(k){
+    const i = W.sel; if(i < 0) return;
+    const O = oner(i);
+    if(k === 'incele'){ haritaya(O.best.t); return; }
+    if(k === 'yoksay'){ delete W.karar[i]; }
+    else {
+      const zaman = new Date().toLocaleString('tr-TR', {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'});
+      const metin =
+        k === 'onay'  ? (O.gerek ? `${O.best.ad} onaylandı · ${O.best.gun} gün · ${O.best.m == null ? 'tamir borcu' : mUsd(O.best.m)}`
+                                 : 'İzlemede kalsın kararı onaylandı — açık yok')
+      : k === 'ata'   ? `${BIRIM[O.best.t]} birimine atandı · ${O.best.ad}`
+      : O.gerek       ? `Satınalma talebi taslağı: ${fmt(O.acik)} adet · ${mUsd(O.acik * PN.clp[i])} liste değeri`
+                      : 'Açık yok: MIN seviyesi karşılanıyor, talep gerekmiyor';
+      W.karar[i] = {k, metin, zaman};
+    }
+    const d = $('wKarar'); if(d) d.innerHTML = kararMetni(i);
+    drawRows();
+  }
+  function kararMetni(i){
+    const r = W.karar[i];
+    return r ? `<b style="color:${C.teal}">Karar kaydı</b> · ${r.metin} <span style="color:${C.dim}">· ${r.zaman}</span>`
+             : `<span style="color:${C.dim}">Karar verilmedi. Kayıt bu oturumda tutulur, sayfa yenilenince sıfırlanır.</span>`;
+  }
+
   function filtered(){
-    const out = [];
+    const out = [], D_ = (W.kanal || W.pencere) ? kararMotoru() : null;
     for(let i=0;i<NPN;i++){
       if(W.kr !== '' && PN.kr[i] !== +W.kr) continue;
       let ok = true;
       for(const f of W.flags) if(!hasF(i,f)){ ok=false; break; }
       if(!ok) continue;
+      if(W.kanal){
+        if(W.kanal === 'fazla'){ if(PN.svc[i] <= PN.max33[i]) continue; }
+        else if(D_.kanal[i] !== W.kanal) continue;
+      }
+      if(W.pencere){
+        if(W.pencere === 'gecmis0'){ if(D_.pencere[i] !== 'gecmis' || PN.po[i] !== 0) continue; }
+        else if(D_.pencere[i] !== W.pencere) continue;
+      }
       if(W.qtxt){
         const hay = 'pn-' + PN.id[i] + '|' + foldTr(LK.sub[PN.sub[i]]) + '|' + foldTr(LK.mdl[PN.mdl[i]]);
         if(!hay.includes(W.qtxt)) continue;
@@ -349,7 +581,8 @@ function renderWatch(){
       const krHtml = krDot(i);
       const ttsTxt = PN.tts[i] >= 9999 ? '∞' : fmt(PN.tts[i]);
       const rw = Math.max(4, 100 * PN.risk[i] / rmax);
-      return `<tr data-i="${i}"><td class="pn-link">PN-${PN.id[i]}</td><td>${LK.mdl[PN.mdl[i]]}</td>
+      const kmk = W.karar[i] ? ` <span title="${W.karar[i].metin}" style="color:${C.teal}">✓</span>` : '';
+      return `<tr data-i="${i}"><td class="pn-link">PN-${PN.id[i]}${kmk}</td><td>${LK.mdl[PN.mdl[i]]}</td>
       <td>${LK.sub[PN.sub[i]]}</td><td style="text-align:center">${krHtml}</td><td>${dHtml}</td>
       <td class="n">${fmt(PN.svc[i])}</td><td class="n" style="color:${PN.tts[i] < PN.ttr[i] ? C.red : C.muted}">${ttsTxt} / ${fmt(PN.ttr[i])}g</td>
       <td class="n">${fmt(PN.t25[i])} → ${fmt(PN.t33[i])}</td><td class="n">${fmt(PN.min33[i])}–${fmt(PN.max33[i])}</td>
@@ -361,22 +594,40 @@ function renderWatch(){
       : `${fmt(idx.length)} parça eşleşti.`;
   }
 
-  function ladder(i){
-    const ops = [];
-    if(PN.exin[i] + PN.exout[i] > 0)
-      ops.push({t:'pool', ad:'Havuzdan değişim', sm:'değişim ağı bugün de işliyor', gun:3, m:.10 * PN.clp[i], tag:'ücret varsayımı liste fiyatının %10\'u'});
-    if(PN.ato[i] && PN.tic[i] != null)
-      ops.push({t:'ictamir', ad:'İç atölye tamiri', sm:'iç tamir mümkün', gun:PN.tic[i], m:PN.icrep[i]});
-    ops.push({t:'distamir', ad:'Dış tamir', sm:hasF(i,FL.BER) ? 'dikkat: bu parçada tamir ekonomik değil' : 'standart tamir kanalı', gun:PN.tdis[i], m:PN.disrep[i]});
-    ops.push({t:'hizli', ad:'Hızlandırılmış dış tamir', sm:'ek ücretle öne alınır', gun:Math.ceil(PN.tdis[i]*.6), m:PN.disrep[i]*1.5, tag:'süre 0,6 katına iner, maliyet 1,5 kat'});
-    ops.push({t:'alim', ad:'Yeni satın alma', sm:'üreticiden sıfır tedarik', gun:PN.tsat[i], m:PN.clp[i]});
-    if(PN.gay[i] > 0)
-      ops.push({t:'sokum', ad:'Donörden söküm', sm:PN.gay[i] + ' arızalı donör rafta bekliyor', gun:1, m:null, tag:'kayıt altında, borç defterine işlenir'});
-    ops.sort((a,b) => a.gun - b.gun);
-    return ops.map((o,n) => `<div class="step${n===0?' best':''}"><span class="no">${n+1}</span>
+  /* oneriTip: önerilen aksiyonun kanalı — merdivende vurgulanan satır ile öneri hep aynı olur */
+  function ladder(i, oneriTip){
+    return ladderOps(i).map((o,n) => `<div class="step${o.t === oneriTip ? ' best' : ''}"><span class="no">${n+1}</span>
       <span class="nm">${o.ad}<small>${o.sm}${o.tag ? ' · ' + o.tag : ''}</small>
         <span class="chip wgo" data-t="${o.t}" style="margin-top:5px;padding:1px 9px;font-size:.64rem;display:inline-block">🗺 haritada göster</span></span>
       <span class="m"><b>${o.gun} gün</b><span>${o.m == null ? 'tamir borcu' : mUsd(o.m)}</span></span></div>`).join('');
+  }
+
+  function oner(i){
+    const {ops, best} = kanalSec(i), ber = hasF(i, FL.BER);
+    const kopru = ops.find(o => o.t === 'sokum' && o.gun < best.gun) || null;
+    const gerekce = {
+      pool:     `Değişim ağı bugün de işliyor; acil ihtiyaç havuzdan ${best.gun} günde kapanır.`,
+      ictamir:  `İç atölye kabiliyeti var; tamir süresi kısaltılarak boru hattı hızlandırılır.`,
+      distamir: `Standart tamir kanalı; iş emri bugün açılırsa parça ${best.gun} günde döner.`,
+      hizli:    `Ek ücretle öne alınır; bekleme ${best.gun} güne iner.`,
+      alim:     `Tedarik süresi uzun; MIN seviyesine çıkmak için sipariş şimdi açılmalı.`,
+      sokum:    `Rafta bekleyen arızalı donör tek hızlı kaynak; söküm kayıt altına alınır.`,
+    }[best.t];
+    const mu = PN.rate33[i] * PN.lead[i] / PRM.ceyrek_gun;
+    const acik = Math.max(PN.min33[i] - PN.svc[i], 0);
+    /* açık yoksa aksiyon da yok: kanal ancak stok MIN'in altına düşerse devreye girer.
+       Aksiyon sonrası stok hiçbir zaman azalmaz — hedef mevcut stok ile MIN'in büyüğü. */
+    return {
+      best, kopru, acik, gerek: acik > 0,
+      ad: acik > 0 ? best.ad : 'Aksiyon gerekmiyor — izlemede kalsın',
+      gerekce: acik > 0
+        ? (ber ? 'Tamir ekonomik değil, hurda adayı. ' : '') + gerekce
+          + (kopru ? ` Donörden söküm ${kopru.gun} günde köprü kurar ama borç defterine yazılır.` : '')
+        : `Elde ${fmt(PN.svc[i])} adet var, önerilen MIN ${fmt(PN.min33[i])} — stok yeterli. `
+          + `Seviye MIN'in altına düşerse en hızlı kanal ${best.ad} (${best.gun} gün).`,
+      rOnce:  Math.round(100 * (1 - poisCdf(mu, PN.svc[i]))),
+      rSonra: Math.round(100 * (1 - poisCdf(mu, Math.max(PN.svc[i], PN.min33[i])))),
+    };
   }
 
   function drawDetail(i){
@@ -400,30 +651,72 @@ function renderWatch(){
     if(hasF(i,FL.BER)) fl.push('<span class="bg bg-mor">HURDA ADAYI</span>');
     if(hasF(i,FL.PO)) fl.push('<span class="bg bg-nk">PHASE-OUT MODELİ</span>');
     if(hasF(i,FL.YENI)) fl.push('<span class="bg bg-teal">YENİ NESİL</span>');
+    const O = oner(i);
     $('wDet').innerHTML = `
     <div class="card" style="margin-top:14px">
-      <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:14px">
-        <h3 class="mono" style="font-size:1.15rem;color:${C.teal}">PN-${PN.id[i]}</h3>
-        ${krDot(i)} <span style="color:${C.dim};font-size:.8rem">${LK.sub[PN.sub[i]]} · ${LK.mdl[PN.mdl[i]]} · risk ${f1(PN.risk[i])}</span>
-        <span style="margin-left:auto">${fl.join(' ')}</span>
+      <div class="pnhead">
+        <div>
+          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+            <h3 class="mono" style="font-size:1.15rem;color:${C.teal}">PN-${PN.id[i]}</h3>
+            ${krDot(i)} <span style="color:${C.dim};font-size:.8rem">${LK.kr[PN.kr[i]]} · ${LK.sub[PN.sub[i]]} · ${LK.mdl[PN.mdl[i]]}</span>
+          </div>
+          ${fl.length ? `<div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap">${fl.join(' ')}</div>` : ''}
+        </div>
+        <div class="rsk"><span>Risk skoru</span><b>${f1(PN.risk[i])}</b>
+          <small>${fmt(NPN)} parça içinde ${fmt(i + 1)}.</small></div>
       </div>
+      <div class="ihty">2033 tahmini yıllık ihtiyaç <span>(iki yöntemin bandı)</span>
+        <b>${fmt(PN.t33[i])} adet</b> <span>( ${fmt(t33lo)} – ${fmt(t33hi)} )</span></div>
+
+      <div class="oner">
+        <div class="l">Önerilen aksiyon</div>
+        <div class="ad"${O.gerek ? '' : ` style="color:${C.muted}"`}>${O.ad}</div>
+        <div class="gr">${O.gerekce}</div>
+        <div class="etki">
+          <div><span>Stok yetmeme riski</span>
+            <b>${O.gerek ? `<i style="color:${C.red}">%${O.rOnce}</i> → <i style="color:${C.teal}">%${O.rSonra}</i>`
+                         : `<i style="color:${O.rOnce > 5 ? C.amber : C.teal}">%${O.rOnce}</i>`}</b>
+            <small>${O.gerek ? 'MIN seviyesine çıkılırsa' : 'mevcut stokla, MIN zaten aşılmış'}</small></div>
+          <div><span>Mevcut açık</span><b>${fmt(O.acik)} adet</b><small>MIN ${fmt(PN.min33[i])} · elde ${fmt(PN.svc[i])}</small></div>
+          <div><span>${O.gerek ? 'Önerilen kanal' : 'Hazırdaki kanal'}</span><b>${O.best.gun} gün</b><small>${O.best.m == null ? 'tamir borcu' : mUsd(O.best.m) + ' birim maliyet'}</small></div>
+        </div>
+        <div class="btns">
+          <button class="btn pri kbtn" data-k="onay">Onayla</button>
+          <button class="btn kbtn" data-k="ata">Ata</button>
+          <button class="btn kbtn" data-k="incele">Haritada incele</button>
+          <button class="btn kbtn" data-k="talep">Satınalma talebi oluştur</button>
+          <button class="btn danger kbtn" data-k="yoksay">Yoksay</button>
+        </div>
+        <div class="kdur" id="wKarar">${kararMetni(i)}</div>
+      </div>
+
       <div class="grid g2" style="margin:0">
         <div>
           <h3 style="font-size:.83rem;color:${C.muted}">Stok &amp; sağlık</h3>
-          <div class="split" style="margin:9px 0 13px">
-            <div><span class="note">SVC ${fmt(PN.svc[i])}</span></div>
-            <div><span class="note">Gayrifaal ${fmt(PN.gay[i])}</span></div>
-            <div><span class="note">Tamirde ${fmt(PN.tam[i])}</span></div>
-            <div><span class="note">Açık PO ${fmt(PN.po[i])}</span></div>
-            <div><span class="note">Exch ${fmt(PN.exin[i])}↓ ${fmt(PN.exout[i])}↑</span></div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;margin:9px 0 12px">
+            <span class="note">SVC ${fmt(PN.svc[i])}</span>
+            <span class="note">Gayrifaal ${fmt(PN.gay[i])}</span>
+            <span class="note">Tamirde ${fmt(PN.tam[i])}</span>
+            <span class="note">Açık PO ${fmt(PN.po[i])}</span>
+            <span class="note">Exch ${fmt(PN.exin[i])}↓ ${fmt(PN.exout[i])}↑</span>
           </div>
-          <div style="font-size:.78rem;color:${C.dim};margin-bottom:4px">Dayanma süresi (TTS): <b class="mono" style="color:${tts<ttr?C.red:C.teal}">${tts>=9999?'∞':fmt(tts)+' gün'}</b></div>
-          <div class="bar-track" style="height:9px;margin-bottom:9px"><i style="width:${Math.min(100,100*tts/mx)}%;background:${tts<ttr?C.red:C.teal}"></i></div>
-          <div style="font-size:.78rem;color:${C.dim};margin-bottom:4px">Toparlanma süresi (TTR): <b class="mono">${fmt(ttr)} gün</b>, ${PN.ato[i]?'iç tamir':'dışa bağımlı'}</div>
-          <div class="bar-track" style="height:9px"><i style="width:${Math.min(100,100*ttr/mx)}%;background:${C.blue}"></i></div>
-          <div class="hint" style="margin-top:13px">Önerilen 2033 min-max: <b class="mono">${fmt(PN.min33[i])} – ${fmt(PN.max33[i])}</b> adet.
-          Servis hedefi ${pct(PN.sh[i]*100,0)}, tedarik süresi ${fmt(PN.lead[i])} gün, talep ${fmt(PN.t25[i])} → ${fmt(PN.t33[i])}, yıllık hurda ${fmt(PN.scrap[i])}.<br>
+          <div class="sbar">
+            <span>Dayanma süresi (TTS)</span>
+            <div class="bar-track"><i style="width:${Math.min(100,100*tts/mx)}%;background:${tts<ttr?C.red:C.teal}"></i></div>
+            <b class="mono" style="color:${tts<ttr?C.red:C.teal}">${tts>=9999?'∞':fmt(tts)+' g'}</b>
+          </div>
+          <div class="sbar">
+            <span>Toparlanma süresi (TTR)</span>
+            <div class="bar-track"><i style="width:${Math.min(100,100*ttr/mx)}%;background:${C.blue}"></i></div>
+            <b class="mono">${fmt(ttr)} g</b>
+          </div>
+          <div class="hint" style="margin-top:11px">TTS &lt; TTR ise parça, yenisi gelmeden tükenir — ${PN.ato[i]?'iç tamir':'dışa bağımlı'}.
+          Önerilen 2033 min-max <b class="mono">${fmt(PN.min33[i])} – ${fmt(PN.max33[i])}</b> adet, servis hedefi ${pct(PN.sh[i]*100,0)}, tedarik süresi ${fmt(PN.lead[i])} gün.<br>
           Liste fiyatı ${mUsd(PN.clp[i])}, piyasa değeri ${mUsd(PN.fmv[i])}, dış tamir ${mUsd(PN.disrep[i])}${PN.icrep[i]!=null?', iç tamir '+mUsd(PN.icrep[i]):''}.</div>
+          <h3 style="font-size:.83rem;color:${C.muted};margin-top:15px">Canlı stok yeterlilik seviyesi</h3>
+          <div style="height:185px;margin-top:7px"><canvas id="cPnCurve"></canvas></div>
+          <div class="hint" style="margin-top:6px">Dikey eksen, <b style="color:${C.text}">s adet stokla tedarik süresi boyunca gelen talebin karşılanma olasılığını</b> verir;
+          %100'e yaklaştıkça parça tükenmez. İşaretler mevcut stoğu ve önerilen 2033 MIN değerini gösterir.</div>
         </div>
         <div>
           <h3 style="font-size:.83rem;color:${C.muted}">Aksiyon sıralayıcı: seçenekler süreye göre</h3>
@@ -433,12 +726,9 @@ function renderWatch(){
               `<option value="${k}"${W.hedef === k ? ' selected' : ''}>${k}</option>`).join('')}</select>
             <span class="note" id="wHedefNot">rota çizmek için önce hedef, sonra 🗺</span>
           </div>
-          <div class="ladder" style="margin-top:4px">${ladder(i)}</div>
-          <div class="hint" style="margin-top:9px">Seçenekler süreye göre sıralanır. AOG saatlik maliyeti girilirse süre ve maliyet birlikte puanlanabilir.</div>
-          <h3 style="font-size:.83rem;color:${C.muted};margin-top:14px">Canlı stok yetmeme eğrisi</h3>
-          <div style="height:170px;margin-top:7px"><canvas id="cPnCurve"></canvas></div>
-          <div class="hint" style="margin-top:6px">Talep verisi zaten Poisson dağılımıyla üretildiği için bu eğri, simülasyonun kapalı form karşılığıdır.
-          İşaretler mevcut stoğu ve önerilen 2033 MIN değerini gösterir.</div>
+          <div class="ladder" style="margin-top:4px">${ladder(i, O.best.t)}</div>
+          <div class="hint" style="margin-top:9px">Seçenekler süreye göre sıralanır; önerilen aksiyon bu listenin en hızlı gerçek tedarik kanalıdır.
+          AOG saatlik maliyeti girilirse süre ve maliyet birlikte puanlanabilir.</div>
         </div>
       </div>
       <div style="border-top:1px solid var(--line-soft);margin-top:15px;padding-top:12px">
@@ -446,11 +736,9 @@ function renderWatch(){
         <div class="grid g21" style="margin:8px 0 0">
           <div style="height:205px"><canvas id="cPnTah"></canvas></div>
           <div style="font-size:.775rem;color:${C.dim};line-height:1.6;margin-top:2px">
-            <div style="margin-bottom:8px"><b style="color:${C.text}">2033 yıllık aralık:</b>
-              <span class="mono">${fmt(t33lo)} – ${fmt(t33hi)}</span> adet · orta
-              <b class="mono" style="color:${C.teal}">${fmt(PN.t33[i])}</b> · değişim
+            <div style="margin-bottom:8px"><b style="color:${C.text}">2025 → 2033 değişim:</b>
               <b>${d33 == null ? '—' : (d33 >= 0 ? '+%' : '−%') + Math.abs(d33)}</b><br>
-              iki yöntemin uçları: model bazlı ölçek ile THY/pool karışımı</div>
+              yukarıdaki bandın uçları iki ayrı yöntem: model bazlı filo ölçeği ile THY/pool karışımı</div>
             <div style="margin-bottom:8px"><b style="color:${C.text}">Stok önerisi:</b>
               MIN <b class="mono">${fmt(PN.min33[i])}</b> = tedarik süresi talebi ${fmt(muC)} + emniyet ${fmt(ssC)}
               · MAX <b class="mono">${fmt(PN.max33[i])}</b> · servis hedefi ${pct(PN.sh[i]*100,0)}</div>
@@ -481,12 +769,12 @@ function renderWatch(){
     const hi = q33.map(m => m + 1.2816 * Math.sqrt(Math.max(m, .25)));
     const ds = [
       {type:'bar', label:'2025 gerçekleşen', data:[PN.q1[i],PN.q2[i],PN.q3[i],PN.q4[i]],
-       backgroundColor:'rgba(91,143,214,.75)', borderRadius:3},
+       backgroundColor:tint(C.bilgi,.62), borderRadius:3},
       {type:'bar', label:'2033 profil, mevsimli', data:q33,
-       backgroundColor:'rgba(79,193,176,.4)', borderColor:C.teal, borderWidth:1, borderRadius:3},
-      {type:'line', label:'2033 belirsizlik p10–p90', data:hi, borderColor:'rgba(232,163,61,0)',
-       pointRadius:0, fill:'+1', backgroundColor:'rgba(232,163,61,.15)'},
-      {type:'line', label:'', data:lo, borderColor:'rgba(232,163,61,0)', pointRadius:0}
+       backgroundColor:tint(C.iyi,.34), borderColor:C.teal, borderWidth:1, borderRadius:3},
+      {type:'line', label:'2033 belirsizlik p10–p90', data:hi, borderColor:'rgba(0,0,0,0)',
+       pointRadius:0, fill:'+1', backgroundColor:tint(C.uyari,.20)},
+      {type:'line', label:'', data:lo, borderColor:'rgba(0,0,0,0)', pointRadius:0}
     ];
     if(PN.nn4[i] != null)
       ds.push({type:'line', label:'Sinir ağı Q4', data:[null,null,null,PN.nn4[i]], showLine:false,
@@ -502,28 +790,18 @@ function renderWatch(){
     const smax = Math.max(Math.ceil(mu + 4*Math.sqrt(mu) + 4), PN.svc[i] + 2, PN.min33[i] + 2);
     const step = Math.max(1, Math.ceil(smax/48));
     const xs = [], ys = [];
-    let term = Math.exp(-Math.min(mu,700)), cdf = mu > 100 ? null : term;
-    if(mu > 100){ // normal yaklaşım
-      const phi = z => .5*(1+Math.tanh(Math.sqrt(Math.PI/8)*z*(1+.044715*z*z)));
-      for(let s=0; s<=smax; s+=step){ xs.push(s); ys.push(+(100*phi((s+.5-mu)/Math.sqrt(mu))).toFixed(2)); }
-    } else {
-      let k = 0, acc = term;
-      for(let s=0; s<=smax; s+=step){
-        while(k < s){ k++; term *= mu/k; acc += term; }
-        xs.push(s); ys.push(+(100*Math.min(1,acc)).toFixed(2));
-      }
-    }
+    for(let s = 0; s <= smax; s += step){ xs.push(s); ys.push(+(100 * poisCdf(mu, s)).toFixed(2)); }
     const at = s => { const j = Math.min(xs.length-1, Math.round(s/step)); return {x:xs[j], y:ys[j]}; };
     if(W.curve) W.curve.destroy();
     W.curve = new Chart($('cPnCurve'), {data:{datasets:[
-      {type:'line',label:'Servis düzeyi',data:xs.map((x,j)=>({x,y:ys[j]})),borderColor:C.teal,pointRadius:0,borderWidth:2,tension:.2},
+      {type:'line',label:'Stok yeterlilik olasılığı',data:xs.map((x,j)=>({x,y:ys[j]})),borderColor:C.teal,pointRadius:0,borderWidth:2,tension:.2},
       {type:'scatter',label:'Mevcut SVC',data:[at(PN.svc[i])],backgroundColor:C.amber,pointRadius:6,pointStyle:'rectRot'},
       {type:'scatter',label:'Önerilen MIN 2033',data:[at(PN.min33[i])],backgroundColor:C.red,pointRadius:6}]},
       options:{maintainAspectRatio:false,
         scales:{x:{type:'linear',title:{display:true,text:'stok seviyesi s (adet)'},ticks:{precision:0}},
-                y:{min:0,max:102,ticks:{callback:v=>'%'+v}}},
+                y:{min:0,max:102,title:{display:true,text:'talebi karşılama olasılığı (%)'},ticks:{callback:v=>'%'+v}}},
         plugins:{legend:{labels:{boxWidth:9,font:{size:10}}},
-          tooltip:{callbacks:{label:c=>` ${c.dataset.label}: s=${fmt(c.parsed.x)} → %${f1(c.parsed.y)}`}}}}});
+          tooltip:{callbacks:{label:c=>` ${c.dataset.label}: s=${fmt(c.parsed.x)} → %${f1(c.parsed.y)} karşılanır`}}}}});
   }
 
   W.showDetail = i => { W.sel = i; drawDetail(i); };
@@ -633,15 +911,15 @@ function renderOngoru(){
 
   const ceyD = DATA.ceyrek;
   new Chart($('cCey'), {data:{labels:ceyD.ad,datasets:[
-    {type:'bar',label:'THY talep',data:ceyD.thy,backgroundColor:'rgba(91,143,214,.8)',stack:'t',borderRadius:3},
-    {type:'bar',label:'Pool talep',data:ceyD.pool,backgroundColor:'rgba(79,193,176,.75)',stack:'t',borderRadius:3},
+    {type:'bar',label:'THY talep',data:ceyD.thy,backgroundColor:tint(C.bilgi,.72),stack:'t',borderRadius:3},
+    {type:'bar',label:'Pool talep',data:ceyD.pool,backgroundColor:tint(C.iyi,.62),stack:'t',borderRadius:3},
     {type:'line',label:'Scrap',data:ceyD.scrap,borderColor:C.red,backgroundColor:C.red,yAxisID:'y1',tension:.3,pointRadius:3}]},
     options:{maintainAspectRatio:false,scales:{x:{stacked:true},y:{stacked:true},
       y1:{position:'right',grid:{drawOnChartArea:false},beginAtZero:true}}}});
 
   new Chart($('cBant'), {data:{labels:['2025','2033'],datasets:[
-    {type:'bar',label:'Gerçekleşen',data:[K.talep25,null],backgroundColor:'rgba(91,143,214,.8)',barPercentage:.5,borderRadius:4},
-    {type:'bar',label:'Bant (segment ↔ model bazlı)',data:[null,[B.alt,B.ust]],backgroundColor:'rgba(232,163,61,.55)',borderColor:C.amber,borderWidth:1.5,barPercentage:.5,borderRadius:4},
+    {type:'bar',label:'Gerçekleşen',data:[K.talep25,null],backgroundColor:tint(C.bilgi,.72),barPercentage:.5,borderRadius:4},
+    {type:'bar',label:'Bant (segment ↔ model bazlı)',data:[null,[B.alt,B.ust]],backgroundColor:tint(C.uyari,.42),borderColor:C.amber,borderWidth:1.5,barPercentage:.5,borderRadius:4},
     {type:'line',label:'PN motoru',data:[K.talep25,B.motor],borderColor:C.teal,borderDash:[6,4],pointBackgroundColor:C.teal,pointRadius:4}]},
     options:{maintainAspectRatio:false,scales:{y:{ticks:{callback:v=>fmt(v)}}},
       plugins:{tooltip:{callbacks:{label:c=>Array.isArray(c.raw)?` bant: ${fmt(c.raw[0])} – ${fmt(c.raw[1])}`:` ${c.dataset.label}: ${fmt(c.parsed.y)}`}}}}});
@@ -650,14 +928,14 @@ function renderOngoru(){
   md.ad.forEach((m,i) => { const t = md.yeni[i] ? g.y : md.kucul[i] ? g.k : g.o; t[0]+=md.t25[i]; t[1]+=md.t33[i]; });
   new Chart($('cGoc'), {type:'bar',data:{labels:['2025','2033 (model-bazlı)'],datasets:[
     {label:'Yeni nesil (5 model)',data:g.y,backgroundColor:C.teal,stack:'s',borderRadius:3},
-    {label:'Diğer',data:g.o,backgroundColor:'rgba(91,143,214,.6)',stack:'s',borderRadius:3},
-    {label:'Küçülen 4 klasik',data:g.k,backgroundColor:'rgba(119,134,156,.55)',stack:'s',borderRadius:3}]},
+    {label:'Diğer',data:g.o,backgroundColor:tint(C.bilgi,.42),stack:'s',borderRadius:3},
+    {label:'Küçülen 4 klasik',data:g.k,backgroundColor:tint(C.gri,.42),stack:'s',borderRadius:3}]},
     options:{maintainAspectRatio:false,scales:{x:{stacked:true},y:{stacked:true,ticks:{callback:v=>fmt(v)}}}}});
 
   const kat = DATA.kat, ki = kat.ad.map((_,i)=>i).sort((a,b)=>kat.buyume[b]-kat.buyume[a]);
   new Chart($('cKat'), {type:'bar',data:{labels:ki.map(i=>kat.ad[i]),
     datasets:[{label:'2033 talep büyümesi %',data:ki.map(i=>kat.buyume[i]),
-      backgroundColor:ki.map(i=>kat.buyume[i]>=80?C.red:kat.buyume[i]>=65?C.amber:'rgba(91,143,214,.75)'),borderRadius:3}]},
+      backgroundColor:ki.map(i=>kat.buyume[i]>=80?C.red:kat.buyume[i]>=65?C.amber:tint(C.bilgi,.62)),borderRadius:3}]},
     options:{maintainAspectRatio:false,indexAxis:'y',
       scales:{x:{ticks:{callback:v=>'+%'+v}},y:{ticks:{font:{size:9.5},autoSkip:false}}},
       plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>` +%${f1(c.parsed.x)}`}}}}});
@@ -676,8 +954,8 @@ function renderOngoru(){
   /* ---- hurda kategori kırılımı ---- */
   const kt = DATA.kat, si = kt.ad.map((_,i)=>i).sort((a,b)=>kt.sbutce[b]-kt.sbutce[a]).slice(0,8);
   new Chart($('cScrapKat'), {type:'bar',data:{labels:si.map(i=>kt.ad[i]),datasets:[
-    {label:'2025 ($M/yıl)',data:si.map(i=>kt.sbutce[i]),backgroundColor:'rgba(232,163,61,.8)',borderRadius:3},
-    {label:'2033 tahmini ($M/yıl)',data:si.map(i=>kt.sbutce33[i]),backgroundColor:'rgba(232,163,61,.3)',borderColor:C.amber,borderWidth:1,borderRadius:3}]},
+    {label:'2025 ($M/yıl)',data:si.map(i=>kt.sbutce[i]),backgroundColor:tint(C.uyari,.74),borderRadius:3},
+    {label:'2033 tahmini ($M/yıl)',data:si.map(i=>kt.sbutce33[i]),backgroundColor:tint(C.uyari,.30),borderColor:C.amber,borderWidth:1,borderRadius:3}]},
     options:{maintainAspectRatio:false,indexAxis:'y',
       scales:{x:{ticks:{callback:v=>'$'+v+'M'}},y:{ticks:{font:{size:9.5},autoSkip:false}}},
       plugins:{tooltip:{callbacks:{label:c=>` ${c.dataset.label}: ${mM(c.parsed.x)}`}}}}});
@@ -686,7 +964,7 @@ function renderOngoru(){
   const bt = DATA.backtest;
   new Chart($('cBt'), {type:'bar', data:{labels:bt.ad, datasets:[
     {label:'Toplam düzeyde hata (%)', data:bt.toplam_hata,
-     backgroundColor:bt.toplam_hata.map((v,i)=>i===3?'rgba(79,193,176,.85)':'rgba(119,134,156,.6)'), borderRadius:4},
+     backgroundColor:bt.toplam_hata.map((v,i)=>i===3?tint(C.iyi,.80):tint(C.gri,.48)), borderRadius:4},
     {label:'PN düzeyinde MAE (adet)', yAxisID:'y1', type:'line', data:bt.mae,
      borderColor:C.amber, backgroundColor:C.amber, pointRadius:4}]},
     options:{maintainAspectRatio:false,
@@ -699,7 +977,7 @@ function renderOngoru(){
   /* ---- phase-out planlayıcısı ---- */
   const pmIdx = md.ad.map((_,i)=>i).filter(i=>md.kucul[i]);
   new Chart($('cPhase'), {data:{labels:pmIdx.map(i=>md.ad[i]),datasets:[
-    {type:'bar',label:'Bağlı stok değeri ($M)',data:pmIdx.map(i=>md.deger[i]),backgroundColor:'rgba(155,140,232,.7)',borderRadius:4},
+    {type:'bar',label:'Bağlı stok değeri ($M)',data:pmIdx.map(i=>md.deger[i]),backgroundColor:tint(C.mor,.58),borderRadius:4},
     {type:'line',label:'Talep değişimi 2025→2033 (%)',yAxisID:'y1',data:pmIdx.map(i=>Math.round(100*(md.t33[i]/md.t25[i]-1))),
      borderColor:C.red,backgroundColor:C.red,pointRadius:4}]},
     options:{maintainAspectRatio:false,
@@ -727,8 +1005,8 @@ function renderOngoru(){
       (ATA ${LK.ata[PN.sub[i]]}) · ${LK.mdl[PN.mdl[i]]} · ${LK.kr[PN.kr[i]]} · risk ${f1(PN.risk[i])}.
       Q4 gerçek <b>${fmt(qv[3])}</b> · ağ ${nn==null?'—':String(nn).replace('.',',')} · SBA ${f1(sba)} · 3Ç ort. ${f1(ma)}`;
     const cfg = {data:{labels:['Q1','Q2','Q3','Q4'],datasets:[
-      {type:'bar',label:'THY talebi',data:tq,backgroundColor:'rgba(91,143,214,.8)',stack:'q',borderRadius:3},
-      {type:'bar',label:'Pool talebi',data:pq,backgroundColor:'rgba(79,193,176,.65)',stack:'q',borderRadius:3},
+      {type:'bar',label:'THY talebi',data:tq,backgroundColor:tint(C.bilgi,.72),stack:'q',borderRadius:3},
+      {type:'bar',label:'Pool talebi',data:pq,backgroundColor:tint(C.iyi,.55),stack:'q',borderRadius:3},
       {type:'line',label:'Sinir ağı (Q4 tahmini)',data:[null,null,null,nn],borderColor:C.violet,backgroundColor:C.violet,pointRadius:7,pointStyle:'rectRot'},
       {type:'line',label:'SBA (Q4 tahmini)',data:[null,null,null,sba],borderColor:C.teal,backgroundColor:C.teal,pointRadius:7,pointStyle:'triangle'},
       {type:'line',label:'3Ç ortalaması',data:[null,null,null,ma],borderColor:C.dim,backgroundColor:C.dim,pointRadius:6}]},
@@ -756,9 +1034,9 @@ function renderOngoru(){
     $('sgOzet').innerHTML = `MAE (küçük iyi) · grup büyüklükleri parantez içinde. Ağın klasiklere en yaklaştığı grup:
       <b>${sgd.ad[enYakin]}</b> (fark ${pct(100*(sgd.nn[enYakin]/sgd.sba[enYakin]-1))}).`;
     const cfg = {type:'bar',data:{labels:sgd.ad.map((a,i)=>`${a} (${fmt(sgd.n[i])})`),datasets:[
-      {label:'Sinir ağı',data:sgd.nn,backgroundColor:'rgba(155,140,232,.8)',borderRadius:3},
-      {label:'SBA',data:sgd.sba,backgroundColor:'rgba(79,193,176,.8)',borderRadius:3},
-      {label:'3Ç ortalaması',data:sgd.ma3,backgroundColor:'rgba(91,143,214,.6)',borderRadius:3}]},
+      {label:'Sinir ağı',data:sgd.nn,backgroundColor:tint(C.mor,.72),borderRadius:3},
+      {label:'SBA',data:sgd.sba,backgroundColor:tint(C.iyi,.72),borderRadius:3},
+      {label:'3Ç ortalaması',data:sgd.ma3,backgroundColor:tint(C.bilgi,.42),borderRadius:3}]},
       options:{maintainAspectRatio:false,scales:{y:{beginAtZero:true}},
         plugins:{legend:{labels:{boxWidth:9,font:{size:10}}}}}};
     if(segChart){ segChart.destroy(); }
@@ -826,9 +1104,9 @@ function renderHarita(){
   const el = $('v-harita');
   const HA = DATA.harita;
   const GRUP = {}; HA.grup.kod.forEach((k, n) => GRUP[k] = {ad: HA.grup.ad[n], u25: HA.grup.u25[n], u33: HA.grup.u33[n]});
-  const DEPO_RENK = {ana_depo:'#E81932', ileri_depo:'#1A1D21', hat_stok:'#5A6472', yok:'#B6BDC7'};
+  const DEPO_RENK = {ana_depo:'#C1121F', ileri_depo:'#1A1D21', hat_stok:'#6E7783', yok:'#B6BDC7'};
   const DEPO_AD = {ana_depo:'Ana depo', ileri_depo:'İleri depo', hat_stok:'Hat stoğu', yok:'Stok yok'};
-  const PRENK = ['#E81932', '#1A73E8', '#12805C', '#B8860B', '#7B1FA2'];
+  const PRENK = ['#C1121F', '#2C5AA0', '#0E6B4A', '#8A6000', '#5B4B8A'];
   const N = HA.kod.length, IST_I = HA.kod.indexOf('IST');
 
   /* ---- Web Mercator, istasyon sınırlarına oturtulur ---- */
@@ -868,6 +1146,7 @@ function renderHarita(){
         </svg>
         <div class="tzoom"><button id="hZin">+</button><button id="hZout">−</button><button id="hZtr" title="Türkiye">TR</button><button id="hZfit" title="tümü">⌂</button></div>
         <div class="tbadge" id="hBadge">TEMSİLİ DAĞITIM · 110m dünya konturu</div>
+        <div class="tbadge tjest">sürükle · kıstırarak yakınlaş · çift tık</div>
         <div class="ttip" id="hTip"></div>
       </div>
     </div>
@@ -888,17 +1167,38 @@ function renderHarita(){
   /* ---- yaklaştırma / kaydırma ---- */
   const VT = {k: 1, tx: 0, ty: 0};
   function vtUygula(){ gPan.setAttribute('transform', `translate(${VT.tx.toFixed(1)},${VT.ty.toFixed(1)}) scale(${VT.k.toFixed(3)})`); }
-  function zoomAt(f){
+  /* f: ölçek çarpanı · (cxp,cyp): sabit kalacak nokta, SVG kullanıcı biriminde.
+     Verilmezse çerçeve ortası — düğmeler böyle çalışır. */
+  function zoomAt(f, cxp = W/2, cyp = HG/2){
     const nk = Math.max(1, Math.min(8, VT.k * f));
-    const cxp = W/2, cyp = HG/2;
+    if(nk === VT.k) return false;
     VT.tx = cxp - (cxp - VT.tx) * (nk/VT.k); VT.ty = cyp - (cyp - VT.ty) * (nk/VT.k); VT.k = nk;
-    vtUygula();
+    sinirla(); vtUygula();
+    return true;
+  }
+  /* Kaydırmayı çerçeve içinde tut: k=1'de harita tam oturur, taşma olmaz. */
+  function sinirla(){
+    const tasX = W * (VT.k - 1), tasY = HG * (VT.k - 1);
+    VT.tx = Math.min(0, Math.max(-tasX, VT.tx));
+    VT.ty = Math.min(0, Math.max(-tasY, VT.ty));
+  }
+  /* preserveAspectRatio="xMidYMid meet": viewBox çerçeveye SIĞDIRILIR, artan kenar
+     boşluk kalır. Ekran→kullanıcı birimi dönüşümü bu boşluğu hesaba katmalı; yoksa
+     imleç altındaki nokta zumda kayar. olcek() tek ölçeği ve kenar boşluğunu verir. */
+  function olcek(){
+    const r = svg.getBoundingClientRect();
+    const s = Math.min(r.width / W, r.height / HG);
+    return {s, ox:r.left + (r.width - W * s) / 2, oy:r.top + (r.height - HG * s) / 2};
+  }
+  function svgNokta(cx, cy){
+    const m = olcek();
+    return [(cx - m.ox) / m.s, (cy - m.oy) / m.s];
   }
   function zoomBox(lo_1, la_1, lo_2, la_2){
     const [x1, y1] = prj(lo_1, la_2), [x2, y2] = prj(lo_2, la_1);
     const k = Math.min(8, Math.min(W / (x2 - x1), HG / (y2 - y1)) * .92);
     VT.k = k; VT.tx = W/2 - k * (x1 + x2)/2; VT.ty = HG/2 - k * (y1 + y2)/2;
-    vtUygula(); draw();
+    sinirla(); vtUygula(); draw();
   }
   $('hZin').addEventListener('click', () => { zoomAt(1.45); draw(); });
   $('hZout').addEventListener('click', () => { zoomAt(1/1.45); draw(); });
@@ -914,13 +1214,66 @@ function renderHarita(){
     zoomBox(Math.min(...is_.map(x => HA.lon[x])) - 3, Math.min(...is_.map(x => HA.lat[x])) - 2,
             Math.max(...is_.map(x => HA.lon[x])) + 3, Math.max(...is_.map(x => HA.lat[x])) + 2);
   };
+  /* ---- işaretçi / dokunma / touchpad hareketleri -----------------------
+     Tek parmak veya sol tuş: sürükleyerek kaydırma.
+     İki parmak (dokunmatik): kıstırarak yakınlaştırma + orta noktayla kaydırma.
+     Touchpad iki parmak kaydırma: haritayı kaydırır; harita tam uzaktayken
+       sayfa kaymaya devam eder (kullanıcı haritada kilitlenmez).
+     Touchpad kıstırma ve fare tekerleği: imlecin altındaki nokta sabit kalarak zum.
+     Çift tık / çift dokunuş: yakınlaş (Shift ile uzaklaş).
+     --------------------------------------------------------------------- */
   let drag = null;
-  svg.addEventListener('pointerdown', e => { drag = {x: e.clientX, y: e.clientY, tx: VT.tx, ty: VT.ty}; });
+  const akt = new Map();          // etkin işaretçiler: id → {x, y}
+  let pinch = null;               // {mesafe, k, cx, cy, tx, ty}
+  let kaydi = false;              // bu jestte gerçek hareket oldu mu (tık bastırma)
+  const ikiNokta = () => {
+    const [a, b] = [...akt.values()];
+    return {mx:(a.x + b.x)/2, my:(a.y + b.y)/2, d:Math.hypot(a.x - b.x, a.y - b.y)};
+  };
+  /* İşaretçi yakalama, sürükleme çerçeveden çıkınca kopmasın diye gerekli — AMA
+     basma anında yakalanırsa sonraki 'click' olayı da SVG'ye yönlendirilir ve
+     istasyon seçimi (.wn eşleşmesi) çalışmaz. Bu yüzden yalnız gerçek sürükleme
+     başladığında yakalıyoruz; salt tık dokunulmadan geçiyor. */
+  function yakala(id){
+    if(svg.setPointerCapture && !svg.hasPointerCapture?.(id))
+      try { svg.setPointerCapture(id); } catch(_){}
+  }
+
+  svg.addEventListener('pointerdown', e => {
+    if(e.pointerType === 'mouse' && e.button !== 0) return;   // yalnız sol tuş kaydırır
+    akt.set(e.pointerId, {x:e.clientX, y:e.clientY});
+    if(akt.size === 2){
+      const p = ikiNokta(), [cx, cy] = svgNokta(p.mx, p.my);
+      pinch = {d:p.d, k:VT.k, cx, cy, tx:VT.tx, ty:VT.ty, mx:p.mx, my:p.my};
+      drag = null; tip.style.display = 'none';
+      yakala(e.pointerId);
+    } else if(akt.size === 1){
+      drag = {x:e.clientX, y:e.clientY, tx:VT.tx, ty:VT.ty};
+      kaydi = false;
+      if(ciftKontrol(e)) drag = null;          // çift tık: kaydırma başlatma, zum yapıldı
+    }
+  });
   svg.addEventListener('pointermove', e => {
+    if(akt.has(e.pointerId)) akt.set(e.pointerId, {x:e.clientX, y:e.clientY});
+    if(pinch && akt.size >= 2){
+      const p = ikiNokta();
+      if(pinch.d > 8){
+        const nk = Math.max(1, Math.min(8, pinch.k * (p.d / pinch.d)));
+        const o = 1 / olcek().s;
+        /* önce kıstırma merkezini sabitle, sonra merkezin kendi kaymasını uygula */
+        VT.k = nk;
+        VT.tx = pinch.cx - (pinch.cx - pinch.tx) * (nk / pinch.k) + (p.mx - pinch.mx) * o;
+        VT.ty = pinch.cy - (pinch.cy - pinch.ty) * (nk / pinch.k) + (p.my - pinch.my) * o;
+        sinirla(); vtUygula(); kaydi = true;
+      }
+      e.preventDefault(); return;
+    }
     if(drag){
-      const r = svg.getBoundingClientRect(), o = W / r.width;
-      VT.tx = drag.tx + (e.clientX - drag.x) * o; VT.ty = drag.ty + (e.clientY - drag.y) * o;
-      vtUygula(); return;
+      const o = 1 / olcek().s;
+      const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+      if(!kaydi && Math.abs(dx) + Math.abs(dy) > 3){ kaydi = true; yakala(e.pointerId); }
+      VT.tx = drag.tx + dx * o; VT.ty = drag.ty + dy * o;
+      sinirla(); vtUygula(); return;
     }
     const hit = e.target.closest && e.target.closest('.rkHit');
     if(hit){
@@ -939,8 +1292,67 @@ function renderHarita(){
     tip.style.top = Math.max(6, e.clientY - r.top - 10) + 'px';
     tip.innerHTML = tipHtml(i);
   });
-  svg.addEventListener('pointerup', () => drag = null);
-  svg.addEventListener('pointerleave', () => { drag = null; tip.style.display = 'none'; });
+  function isaretciBitir(e){
+    akt.delete(e.pointerId);
+    if(akt.size < 2) pinch = null;
+    if(akt.size === 0){ if(kaydi) draw(); drag = null; }
+    else if(akt.size === 1 && !pinch){
+      const [a] = [...akt.values()];
+      drag = {x:a.x, y:a.y, tx:VT.tx, ty:VT.ty};      // bir parmak kalktı, kaydırmaya devam
+    }
+  }
+  svg.addEventListener('pointerup', isaretciBitir);
+  svg.addEventListener('pointercancel', isaretciBitir);
+  svg.addEventListener('pointerleave', e => {
+    if(e.pointerType === 'mouse' && !akt.size){ drag = null; tip.style.display = 'none'; }
+    else tip.style.display = 'none';
+  });
+
+  /* Touchpad + fare tekerleği.
+     ctrl/meta ile gelen wheel = touchpad kıstırması (tarayıcı bu şekilde bildirir).
+     Fare tekerleği ayrımı: satır/sayfa birimi ya da tek eksende büyük tam adım. */
+  /* Tekerlek olayları saniyede onlarca gelir; her birinde draw() ile 25 istasyon +
+     rota katmanını yeniden kurmak takılmaya yol açar. Jest sırasında yalnız transform
+     güncellenir (ucuz), çizim jest durunca bir kez yapılır. */
+  let cizZaman = null;
+  const cizSonra = () => { clearTimeout(cizZaman); cizZaman = setTimeout(draw, 90); };
+  svg.addEventListener('wheel', e => {
+    const [cx, cy] = svgNokta(e.clientX, e.clientY);
+    const kistirma = e.ctrlKey || e.metaKey;
+    const fare = !kistirma && (e.deltaMode !== 0 ||
+                 (e.deltaX === 0 && Math.abs(e.deltaY) >= 100 && Number.isInteger(e.deltaY)));
+    if(kistirma || fare){
+      const f = Math.exp(-e.deltaY * (kistirma ? 0.012 : 0.0022));
+      if(zoomAt(f, cx, cy)) cizSonra();
+      e.preventDefault(); return;
+    }
+    /* düz iki parmak kaydırma → haritayı kaydır; kaydıracak yer yoksa sayfaya bırak */
+    if(VT.k <= 1) return;
+    const o = 1 / olcek().s;
+    const ox = VT.tx, oy = VT.ty;
+    VT.tx -= e.deltaX * o; VT.ty -= e.deltaY * o;
+    sinirla();
+    if(VT.tx !== ox || VT.ty !== oy){ vtUygula(); cizSonra(); e.preventDefault(); }
+  }, {passive:false});
+
+  /* Çift tık / çift dokunuş: yakınlaş — Shift ile uzaklaş.
+     Yerleşik 'dblclick' olayına GÜVENİLMİYOR: bu SVG üzerinde gerçek çift tıkta
+     tarayıcı olayı üretmiyor (ölçüldü) ve dokunmatikte zaten güvenilmez.
+     Bu yüzden basma zamanı/konumu ile kendimiz saptıyoruz — fare, kalem ve
+     parmak için aynı yol. */
+  let sonBasma = 0, sonNokta = [0, 0];
+  function ciftKontrol(e){
+    const t = performance.now();
+    const yakin = Math.hypot(e.clientX - sonNokta[0], e.clientY - sonNokta[1]) < 24;
+    if(t - sonBasma < 320 && yakin){
+      sonBasma = 0;
+      const [cx, cy] = svgNokta(e.clientX, e.clientY);
+      if(zoomAt(e.shiftKey ? 1/1.8 : 1.8, cx, cy)){ draw(); kaydi = true; }  // sonraki tık seçim yapmasın
+      return true;
+    }
+    sonBasma = t; sonNokta = [e.clientX, e.clientY];
+    return false;
+  }
 
   /* ---- yardımcılar ---- */
   const ucak = i => H.yil33 ? HA.u33[i] : HA.u25[i];
@@ -986,7 +1398,7 @@ function renderHarita(){
   /* Tek parça izole edilince: aksiyon merdivenindeki TÜM kanallar haritada.
      Tamir ve satın alma süreleri parçanın GERÇEK verisinden (tic/tdis/tsat). */
   const DIS_HUB = ['FRA', 'LHR', 'AMS', 'CDG', 'DXB'];
-  const KANAL_RENK = {depo:'#12805C', pool:'#1A73E8', sokum:'#E06A6A', ictamir:'#4FC1B0', distamir:'#9AA8C0', hizli:'#E8A54C', alim:'#77869C'};
+  const KANAL_RENK = {depo:'#0E6B4A', pool:'#2C5AA0', sokum:'#C1121F', ictamir:'#3E8E6B', distamir:'#6E7783', hizli:'#8A6000', alim:'#5B4B8A'};
   const kanalVeri = (p, hIdx) => {
     const idx = PIDX[p.pn];
     const ks = [];
@@ -1021,8 +1433,8 @@ function renderHarita(){
       Uçak ${ucak(i)} (${H.yil33 ? 2033 : 2025}) · ${DEPO_AD[HA.depo[i]]}<br>
       Stok: <span class="tt-v">${fmt(HA.kalem[i])}</span> kalem · <span class="tt-v">${fmt(HA.adet[i])}</span> adet<br>
       IST transfer: <span class="tt-v">${HA.tsaat[i] === 0 ? 'ana üs' : String(HA.tsaat[i]).replace('.', ',') + ' saat'}</span> ·
-      AOG kapsam ${pct(HA.kapsam[i]*100, 0)}${H.kriz && kf > 1 ? `<br><span style="color:#E06A6A">kriz: kırmızı yükü ×${f1(kf)}</span>` : ''}<br>
-      <i style="color:#77869C">temsilî dağıtım</i>`;
+      AOG kapsam ${pct(HA.kapsam[i]*100, 0)}${H.kriz && kf > 1 ? `<br><span style="color:${C.kritik}">kriz: kırmızı yükü ×${f1(kf)}</span>` : ''}<br>
+      <i style="color:${C.dim}">temsilî dağıtım</i>`;
   }
 
   /* ---- çizim ---- */
@@ -1031,7 +1443,7 @@ function renderHarita(){
     const kf = krizFaktor();
     $('hNot').textContent = (H.rota || H.wp)
       ? (() => { const r = rotaVeri(); return r.wp
-          ? `rota: ${r.sc.ucak} → ${r.sc.hedef} · Watchlist'ten · en hızlı ${sureTxt(r.kritik)}`
+          ? `rota: ${r.sc.ucak} → ${r.sc.hedef} · seçili parça · en hızlı ${sureTxt(r.kritik)}`
           : `rota: ${r.sc.ucak} · ${r.sc.hedef} · 5 parça · kritik yol ${String(r.kritik).replace('.', ',')} saat`; })()
       : H.kriz
         ? (SC.preset === 'baz' ? 'kriz katmanı: normal durum, Senaryo sekmesinden bir kriz seçebilirsiniz'
@@ -1047,7 +1459,7 @@ function renderHarita(){
       const etiket = HA.yd[i] || rr * zk >= 7.5 || zk >= 2.2;
       return `<g class="wn${H.sel === i ? ' sel' : ''}" data-s="${i}" transform="translate(${x.toFixed(1)},${y.toFixed(1)})">
         <circle r="${(rr + 6/zk).toFixed(2)}" fill="transparent"></circle>
-        ${H.kriz && kf > 1 ? `<circle r="${(rr + 4/zk).toFixed(2)}" fill="none" stroke="#E81932" stroke-width="${(1.6/zk).toFixed(2)}" stroke-dasharray="4,3" opacity="${Math.min(.9, .25 + HA.pay25[i]*3).toFixed(2)}"></circle>` : ''}
+        ${H.kriz && kf > 1 ? `<circle r="${(rr + 4/zk).toFixed(2)}" fill="none" stroke="${C.kritik}" stroke-width="${(1.6/zk).toFixed(2)}" stroke-dasharray="4,3" opacity="${Math.min(.9, .25 + HA.pay25[i]*3).toFixed(2)}"></circle>` : ''}
         <circle class="wc" r="${rr.toFixed(2)}" fill="${DEPO_RENK[HA.depo[i]]}" style="stroke-width:${(2/zk).toFixed(2)}"></circle>
         ${etiket ? `<text class="wl" x="${(rr + 4/zk).toFixed(2)}" y="${(3.5/zk).toFixed(2)}" style="font-size:${(9.5/zk).toFixed(2)}px;stroke-width:${(2.6/zk).toFixed(2)}px">${HA.kod[i]}</text>` : ''}
       </g>`;
@@ -1119,7 +1531,7 @@ function renderHarita(){
   function rotaPanel(r){
     const cips = r.wp ? `
       <div class="ctl" style="margin-bottom:8px">
-        <span class="chip on">PN-${r.sc.parcalar[0].pn} → ${r.sc.hedef} · Watchlist'ten</span>
+        <span class="chip on">PN-${r.sc.parcalar[0].pn} → ${r.sc.hedef} · seçili parça</span>
         <span class="chip" data-wkapat="1">✕ kapat</span>
       </div>` : `
       <div class="ctl" style="margin-bottom:8px">
@@ -1168,7 +1580,7 @@ function renderHarita(){
       <div class="hint" style="margin:7px 0 0">
       ${DEPO_AD[HA.depo[s]]} · uçak ${HA.u25[s]} → ${HA.u33[s]}, <b style="color:${HA.buyume[s] >= 70 ? C.amber : C.teal}">+${pct(HA.buyume[s], 0)}</b>.<br>
       Stok ${fmt(HA.kalem[s])} kalem · ${fmt(HA.adet[s])} adet · IST transfer ${HA.tsaat[s] === 0 ? 'ana üs' : String(HA.tsaat[s]).replace('.', ',') + ' saat'} ·
-      AOG kapsam ${pct(HA.kapsam[s]*100, 0)}${H.kriz && kf > 1 ? ` · <span style="color:#E06A6A">kriz ×${f1(kf)}</span>` : ''}.<br>
+      AOG kapsam ${pct(HA.kapsam[s]*100, 0)}${H.kriz && kf > 1 ? ` · <span style="color:${C.kritik}">kriz ×${f1(kf)}</span>` : ''}.<br>
       <i>Case tablosunda "${g.ad}" grubu ${g.u25}→${g.u33} uçak. Bu nokta grubun ${pct(100 * HA.u25[s] / g.u25, 0)} payıyla temsil edilir.
       Gerçek üründe istasyon etiketli kayıttan gelir.</i></div>`;
   }
@@ -1200,6 +1612,7 @@ function renderHarita(){
     if(wk){ H.wp = null; H.rpn = null; H.rk = null; draw(); }
   });
   svg.addEventListener('click', e => {
+    if(kaydi){ kaydi = false; return; }        // kaydırma/kıstırma sonrası tık seçim yapmasın
     const hit = e.target.closest('.rkHit');
     if(hit){
       if(hit.dataset.k != null){ const k = +hit.dataset.k; H.rk = H.rk === k ? null : k; }
@@ -1234,6 +1647,50 @@ function senaryoHesap(cfg){
     if(PN.svc[i] < min){ acik++; ek += (min - PN.svc[i]) * PN.clp[i]; }
   }
   return {kir, kirAog, kap, acik, ek, byKr};
+}
+
+/* ---------------------------------------------------------------------
+   BELİRSİZLİK DENEMELERİ — açık PN sayısı bağımsız Bernoulli'lerin toplamı
+   (Poisson-binom). Ortalama Σp, varyans Σp(1−p); yüzdelikler merkezi limit
+   yaklaşımıyla. Örnekleme yapmadan aynı sonucu verir, tarayıcıda ~2 ms.
+   Talep bandı G noktalı ızgarayla taranır → belirsizliğin kaynağı ayrışır.
+   --------------------------------------------------------------------- */
+function senaryoMu(i, cfg){
+  const dis = PN.ato[i] === 0;
+  let mDem = (1 + cfg.d/100) * (cfg.yeniDem && hasF(i,FL.YENI) ? cfg.yeniDem : 1);
+  if(cfg.kuculDem && hasF(i,FL.PO)) mDem *= cfg.kuculDem;
+  const mTat = (cfg.disOnly && !dis) ? 1 : (1 + cfg.l/100);
+  return PN.rate33[i] * mDem * PN.lead[i] * mTat / PRM.ceyrek_gun;
+}
+const Z = {80:1.2816, 90:1.6449, 95:1.9600};
+function belirsizlik(cfg, G = 9){
+  const uLo = B.alt / B.motor, uHi = B.ust / B.motor;   // talep bandının uçları
+  const ms = [], vs = [], cs = [], cvs = [];
+  for(let g = 0; g < G; g++){
+    const u = G === 1 ? (uLo + uHi) / 2 : uLo + g / (G - 1) * (uHi - uLo);
+    let m = 0, v = 0, c = 0, cv = 0;
+    for(let i = 0; i < NPN; i++){
+      const mu = senaryoMu(i, cfg) * u, s = PN.svc[i], clp = PN.clp[i];
+      const p = 1 - poisCdf(mu, s);
+      m += p; v += p * (1 - p);
+      const [e1, e2] = eksikMoment(mu, s);
+      c += e1 * clp;
+      cv += Math.max(0, e2 - e1 * e1) * clp * clp;   // parçalar bağımsız → varyanslar toplanır
+    }
+    ms.push(m); vs.push(v); cs.push(c); cvs.push(cv);
+  }
+  const ort = a => a.reduce((x, y) => x + y, 0) / a.length;
+  const mOrt = ort(ms), cOrt = ort(cs);
+  const vBant = ort(ms.map(x => (x - mOrt) ** 2)), vPois = ort(vs);
+  const cvBant = ort(cs.map(x => (x - cOrt) ** 2)), cvPois = ort(cvs);
+  const sd = Math.sqrt(vBant + vPois), malSd = Math.sqrt(cvBant + cvPois);
+  /* en kötü %10'un ortalaması: normal yaklaşımda ort + sd·φ(z90)/0,10 */
+  const KUYRUK = 1.7550;
+  return {ort:mOrt, sd, mal:cOrt, malSd,                    // mal, malSd: USD
+          kuyruk: cOrt + KUYRUK * malSd,
+          bantPayi: 100 * vBant / Math.max(vBant + vPois, 1e-9),
+          aralik: g => [mOrt - Z[g] * sd, mOrt + Z[g] * sd],
+          cdf: x => .5 * (1 + Math.tanh(Math.sqrt(Math.PI/8) * (x - mOrt) / sd))};
 }
 
 const SC = {d:0, l:0, s:0, yeniDem:0, kuculDem:0, disOnly:false, preset:'baz'};
@@ -1278,7 +1735,7 @@ function renderSenaryo(){
   </div>
 
   <div class="grid g12" style="margin-top:14px">
-    <div class="card" style="border-color:rgba(79,193,176,.35)">
+    <div class="card" style="border-color:var(--teal-dim)">
       <h3 style="color:${C.teal}">Model parametreleri</h3>
       <div class="hint">Ağırlıklar, BER eşiği ve alarm tamponu buradan değiştirilir.
       Bütün sayılar tarayıcıda anında yeniden hesaplanır.</div>
@@ -1299,41 +1756,65 @@ function renderSenaryo(){
     </div>
   </div>
 
-  <div class="grid g21" style="margin-top:14px">
-    <div class="card"><h3>Dayanıklılık: filo kaç gün dayanır?</h3>
-      <div class="hint">Her parçanın eldeki stokla kaç gün dayanacağını gösteriyor. Soldaki parçalar bir tedarik şokunda
-      ilk düşecek olanlar. Ortalama ${fmt(K.tts_medyan)} gün.</div>
-      <div style="height:225px"><canvas id="cTts"></canvas></div></div>
-    <div class="card"><h3>Kıtlık sensörü: piyasa değeri / liste fiyatı</h3>
-      <div class="hint">İkinci el değerin liste fiyatına oranı, ortalaması <b>${String(DATA.fmvClpHist.medyan).replace('.',',')}</b>.
-      Bu oran kalıcı olarak yükselirse ikinci el piyasada kıtlık başlıyor demektir, yani bir erken uyarı işareti.
-      Bugün piyasa değeri listeyi aşan tek parça yok.</div>
-      <div style="height:150px"><canvas id="cFmv"></canvas></div>
-      <div class="grid g2" style="margin-top:10px">
-        <div class="kpi red" style="padding:10px 13px"><div class="l">Kırmızı / siparişsiz</div>
-          <div class="v" style="font-size:1.2rem">${K.kirmizi} / ${K.siparissiz}</div><div class="d">hedef: siparişsiz = 0</div></div>
-        <div class="kpi" style="padding:10px 13px"><div class="l">TTS alt çeyrek</div>
-          <div class="v" style="font-size:1.2rem">${fmt(K.tts_q25)} gün</div><div class="d">kokpitte izlenen dayanıklılık metriği</div></div>
-      </div></div>
+  <h2 class="sec-h">Belirsizlik denemeleri: plan kaç farklı gelecekte tutuyor?</h2>
+  <p class="sec-p">Talep kesin bir sayı değil, bir dağılım. Her parça için tedarik süresi boyunca gelen talebin
+  stoğu aşma olasılığı hesaplanır; bunların toplamı "kaç parça açıkta kalır" sorusunun tek bir cevabını değil,
+  bütün bir aralığını verir. Aşağıdaki her sayı soldaki senaryo ayarlarına bağlıdır ve anında yeniden hesaplanır.</p>
+
+  <div class="grid g21">
+    <div class="card">
+      <div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap">
+        <h3>Açıkta kalan parça sayısının dağılımı</h3>
+        <span class="ctl" style="margin:0 0 0 auto;gap:5px"><span class="note">aralık</span>
+          <span class="chip gv on" data-g="80">%80</span><span class="chip gv" data-g="90">%90</span>
+          <span class="chip gv" data-g="95">%95</span></span>
+      </div>
+      <div class="hint">Eğri, "en fazla şu kadar parça açıkta kalır" olasılığını verir. Dikey kılavuzlar seçili aralığın
+      iki ucunu, nokta orta değeri gösterir. Sabitlenen senaryolar soluk çizgi olarak arkada kalır.</div>
+      <div style="height:230px"><canvas id="cBel"></canvas></div>
+      <div class="ctl" style="margin:9px 0 0">
+        <span class="chip" id="belSabit">📌 bu senaryoyu sabitle</span>
+        <span class="chip" id="belTemiz">sabitlenenleri temizle</span>
+        <span class="note" id="belNot"></span>
+      </div>
+    </div>
+    <div class="card">
+      <h3>Ne kadarına hazırlıklı olmalıyız?</h3>
+      <div class="hint">Ortalama bütçe planlaması içindir; kötü giden geleceklerin ortalaması ise tampon içindir.
+      Aradaki fark belirsizliğin fiyatıdır.</div>
+      <div class="blk" id="belKut"></div>
+      <div style="margin-top:13px">
+        <div style="font-size:.79rem;color:${C.text};font-weight:600;margin-bottom:2px">Belirsizlik nereden geliyor?</div>
+        <div class="kayseri" id="belKay"></div>
+        <div class="kayleg" id="belKayL"></div>
+        <div class="hint" style="margin-top:9px" id="belKayN"></div>
+      </div>
+    </div>
   </div>
 
-  <div class="card" style="margin-top:14px">
-    <h3>Filo kaydırıcısı: 2025'ten 2033'e</h3>
-    <div class="sl" style="max-width:520px;margin-top:10px"><label>Yıl <b id="lY">2025</b></label>
-      <input type="range" id="sY" min="2025" max="2033" step="1" value="2025"></div>
-    <div class="grid g4" id="fleetK"></div>
-    <div class="hint">Aradaki yıllar doğrusal olarak dolduruluyor. Gerçek teslimat takvimi kurgusal olduğu için bu yalnız yönü gösterir.
-    Tamir döngüsü sermayesi, tedarik süreleri sabit varsayımıyla ölçekleniyor. Erken kabiliyet yatırımı bu eğriyi aşağı çeker.</div>
+  <div class="grid g21" style="margin-top:12px">
+    <div class="card"><h3>Senaryoların karşılaştırması</h3>
+      <div class="hint">Altı senaryonun tamamı aynı anda hesaplanır. Çubuk seçili aralığı, dikey işaret orta değeri gösterir.
+      Bir senaryoya tıklayınca ayarlar ona geçer.</div>
+      <div style="height:215px"><canvas id="cBelKars"></canvas></div></div>
+    <div class="card"><h3>Doğrulama: aynı sayı iki bağımsız yoldan</h3>
+      <div class="hint">Sol sütun tarayıcıdaki kapalı formül, sağ sütun ${fmt(DATA.mc.trials)} rastgele deneme
+      (build sırasında, ayrı kodla koşuldu). İkisi aynı yerde buluşuyor — kodda hata olsaydı buluşmazlardı.</div>
+      <table class="dogtab" id="belDog"></table>
+      <div class="hint" style="margin-top:10px">Deneme sayısı arttıkça ortalamanın belirsizliği <span class="mono">σ/√n</span> ile daralır:
+      ${fmt(DATA.mc.trials)} denemede ±${String((14.5/Math.sqrt(DATA.mc.trials)).toFixed(2)).replace('.',',')} parça.
+      Daha fazlası ekrana ölçülebilir bir şey eklemiyor.</div>
+    </div>
   </div>
 
-  <div class="grid g21" style="margin-top:14px">
-    <div class="card"><h3>Monte Carlo doğrulaması: 2033 belirsizliği</h3>
-      <div class="hint">${fmt(DATA.mc.trials)} denemenin her birinde talebi, aralık içinden rastgele bir büyüme ve tesadüfi dalgalanmayla üretiyoruz.
-      Ölçtüğümüz şey, bugünkü stokla tedarik süresini çıkaramayacak <b>parça sayısı</b>.
-      Normal durumda ortalama <b>${fmt(DATA.mc.baz.acik_ort)}</b> parça çıkıyor, denemelerin çoğu ${fmt(DATA.mc.baz.acik_p10)} ile ${fmt(DATA.mc.baz.acik_p90)} arasında.
-      Motor krizinde bu sayı <b>${fmt(DATA.mc.motor.acik_ort)}</b> parçaya, ek ihtiyaç ${mM(DATA.mc.motor.ek_ort)}'a çıkıyor.
-      Simülasyon, formülle hesaplanan sonuçla <b style="color:${C.teal}">%${String(DATA.mc.uyum).replace('.',',')}</b> uyumlu.</div>
-      <div style="height:200px"><canvas id="cMc"></canvas></div></div>
+  <div class="card" style="margin-top:12px">
+    <h3>Dayanıklılık: filo kaç gün dayanır?</h3>
+    <div class="hint">Her parçanın eldeki stokla kaç gün dayanacağı. Senaryo değiştikçe dağılım canlı kayar;
+    baz durum arkada gri olarak kalır. Soldaki parçalar bir tedarik şokunda ilk düşecek olanlar.</div>
+    <div style="height:215px"><canvas id="cTts"></canvas></div>
+  </div>
+
+  <div class="grid g21" style="margin-top:12px">
     <div class="card"><h3>Duyarlılık: 2033 açığını kapatma maliyetini ne oynatır?</h3>
       <div class="hint">Temel maliyet <b>${mM(DATA.tornado.baz)}</b>. Çubuklar her etkenin iki ucunu gösteriyor.
       En büyük etken <b>tedarik süreleri</b>.
@@ -1358,15 +1839,17 @@ function renderSenaryo(){
     </div>
   </div>
 
-  <div class="card" style="margin-top:14px;border-color:rgba(79,193,176,.35)">
+  <div class="card" style="margin-top:14px;border-color:var(--teal-dim)">
     <h3 style="color:${C.teal}">Kabiliyet yatırımı: öncelik sırasına göre ilk 40 aday</h3>
     <div class="hint">${K.risk_listesi} parça kritik ve iç tamiri yok, dış tamire yılda <b>${mM(K.kab_bugun)}</b> gidiyor.
     İç tamir yılda <b style="color:${C.teal}">${mM(K.kab_tasarruf)} tasarruf + ${mM(K.kab_sermaye)} serbesti</b> getirir.
-    <span class="bg bg-warn">ÜÇLÜ</span> = kritik + tamirsiz + geçmişsiz.</div>
-    <div class="tw" style="max-height:420px"><table><thead><tr>
+    Bu, duyarlılık grafiğindeki "kabiliyet yatırımı" çubuğunun kaynağıdır.
+    <span class="bg bg-warn">ÜÇLÜ</span> = kritik + tamirsiz + geçmişsiz.
+    Aşağıda ilk 8 aday var; <span class="chip" data-roitum="1" style="padding:1px 9px;font-size:.66rem">tam listeyi watchlist'te aç</span></div>
+    <div class="tw" style="max-height:290px"><table><thead><tr>
       <th>#</th><th>PN</th><th>Kategori</th><th>Model</th><th class="n">Yıllık talep</th><th class="n">Dış TAT</th>
       <th class="n">Dış harcama /yıl</th><th class="n">Tasarruf /yıl</th><th class="n">Serbesti</th><th></th>
-    </tr></thead><tbody>${DATA.roi.id.map((id,n) => `<tr>
+    </tr></thead><tbody>${DATA.roi.id.slice(0, 8).map((id,n) => `<tr>
       <td class="n">${n+1}</td><td class="pn-link mono">PN-${id}</td><td>${DATA.roi.sub[n]}</td><td>${DATA.roi.mdl[n]}</td>
       <td class="n">${fmt(DATA.roi.t25[n])}</td><td class="n">${fmt(DATA.roi.tdis[n])} g</td>
       <td class="n">${mUsd(DATA.roi.harcama[n])}</td><td class="n" style="color:${C.teal}">${mUsd(DATA.roi.tasarruf[n])}</td>
@@ -1394,8 +1877,8 @@ function renderSenaryo(){
     if(chart){ chart.data.datasets[1].data = r.byKr; chart.update(); }
     else chart = new Chart($('cScen'), {type:'bar',
       data:{labels:LK.kr,datasets:[
-        {label:'Kırmızı, baz durum',data:BAZ.byKr,backgroundColor:'rgba(119,134,156,.5)',borderRadius:4},
-        {label:'Kırmızı, senaryo',data:r.byKr,backgroundColor:'rgba(224,106,106,.8)',borderRadius:4}]},
+        {label:'Kırmızı, baz durum',data:BAZ.byKr,backgroundColor:tint(C.gri,.36),borderRadius:4},
+        {label:'Kırmızı, senaryo',data:r.byKr,backgroundColor:tint(C.kritik,.72),borderRadius:4}]},
       options:{maintainAspectRatio:false,animation:{duration:250},scales:{y:{beginAtZero:true,ticks:{precision:0}}}}});
   }
   function syncUI(){
@@ -1405,31 +1888,125 @@ function renderSenaryo(){
     $('scNot').textContent = PRESETS[SC.preset] ? PRESETS[SC.preset].not : 'Özel senaryo, kaydırıcılarla tanımlandı.';
   }
   ['sD','sL','sS'].forEach((id, n) => $(id).addEventListener('input', e => {
-    SC[['d','l','s'][n]] = +e.target.value; SC.preset = 'ozel'; SC.yeniDem = 0; SC.kuculDem = 0; SC.disOnly = false; syncUI(); run();
+    SC[['d','l','s'][n]] = +e.target.value; SC.preset = 'ozel'; SC.yeniDem = 0; SC.kuculDem = 0; SC.disOnly = false; syncUI(); run(); belCiz(); ttsCiz();
   }));
   el.addEventListener('click', e => {
     const pl = e.target.closest('.pn-link');
     if(pl){ const id = pl.textContent.replace('PN-','').trim();
       if(PIDX[id] != null){ showView('watch'); if(W.showDetail) W.showDetail(PIDX[id]); } return; }
+    if(e.target.closest('[data-roitum]')){
+      showView('watch');
+      if(W.ready){ W.reset(); W.flags.add(FL.R547); W.apply(); window.scrollTo(0, 0); }
+      return; }
     const c = e.target.closest('.sp'); if(!c) return;
     const p = PRESETS[c.dataset.p];
     Object.assign(SC, {d:p.d, l:p.l, s:p.s, yeniDem:p.yeniDem, kuculDem:p.kuculDem, disOnly:p.disOnly, preset:c.dataset.p});
-    syncUI(); run();
+    syncUI(); run(); belCiz(); ttsCiz();
   });
 
-  function fleet(){
-    const y = +$('sY').value, f = (y-2025)/8;
-    $('lY').textContent = y;
-    const ucak = Math.round(1200 + 800*f);
-    const ta = K.talep25 + (B.alt - K.talep25)*f, tu = K.talep25 + (B.ust - K.talep25)*f;
-    const fl$ = K.float_fmv + (K.float_fmv_33 - K.float_fmv)*f;
-    $('fleetK').innerHTML =
-      stat('Filo', fmt(ucak) + ' uçak', `THY ${fmt(500+300*f)} · Pool ${fmt(700+500*f)}`) +
-      stat('Talep bandı', fmt(ta) + '–' + fmt(tu), y === 2025 ? 'gerçekleşen' : `+%${Math.round(B.alt_pct*f)}–${Math.round(B.ust_pct*f)}`) +
-      stat('Float sermayesi', mM(fl$), `TAT sabit varsayımıyla`, fl$ > K.float_fmv*1.3 ? 'amber' : '') +
-      stat('Yeni nesil talep payı', pct(33.7 + (64.8-33.7)*f, 0), 'göç ilerledikçe cold-start kritikleşir');
+  /* ---- belirsizlik denemeleri ---- */
+  const BEL = {g:80, sabit:[], kars:null, cdf:null};
+  const SEN_RENK = {baz:C.iyi, motor:C.kritik, pandemi:C.uyari, lojistik:C.mor, patlama:C.bilgi, oem:C.gri, ozel:C.text};
+  const senKey = () => PRESETS[SC.preset] ? SC.preset : 'ozel';
+
+  function belCiz(){
+    const b = belirsizlik(SC, 9), [lo, hi] = b.aralik(BEL.g);
+    /* --- kutular --- */
+    const kotu = b.kuyruk;
+    $('belKut').innerHTML = `
+      <div class="bkut"><div class="l">Beklenen fatura</div>
+        <div class="v">${mM(b.mal/1e6)}</div><div class="d">ortalama gelecekte 2033 açığını kapatma</div></div>
+      <div class="bkut"><div class="l">Kötü giden %10'un ortalaması</div>
+        <div class="v" style="color:${C.uyari}">${mM(kotu/1e6)}</div><div class="d">bütçe tamponu buna göre kurulur</div></div>
+      <div class="bkut"><div class="l">Beklenen açık parça</div>
+        <div class="v">${fmt(b.ort)}</div><div class="d">%${BEL.g} aralık ${fmt(lo)} – ${fmt(hi)}</div></div>
+      <div class="bkut"><div class="l">Belirsizliğin fiyatı</div>
+        <div class="v" style="color:${C.mor}">${mM((kotu - b.mal)/1e6)}</div><div class="d">ortalama ile kötü senaryo arası</div></div>`;
+    /* --- belirsizliğin kaynağı --- */
+    const bp = Math.round(b.bantPayi), pp = 100 - bp;
+    $('belKay').innerHTML = `<i style="width:${pp}%;background:${C.bilgi}"></i><i style="width:${bp}%;background:${C.mor}"></i>`;
+    $('belKayL').innerHTML = `<span style="color:${C.bilgi}">Parça kırılmalarının rastgeleliği %${pp}</span>
+      <span style="color:${C.mor}">Filo büyüme bandı %${bp}</span>`;
+    $('belKayN').innerHTML = `2033 filosunun ne kadar büyüyeceğini bilmemek sonucun yalnız <b>%${bp}</b>'ini oynatıyor.
+      Geri kalanı hangi parçanın ne zaman kırılacağı — ve bunu tahminle değil emniyet stoğuyla yönetiyoruz.
+      Plan, talep tahmininin tam tutmasına bağlı değil.`;
+    /* --- kümülatif eğri --- */
+    const x0 = Math.max(0, b.ort - 4.2 * b.sd), x1 = b.ort + 4.2 * b.sd, N = 60;
+    const seri = (bb, renk, ad, sabitMi) => ({
+      type:'line', label:ad, borderColor:renk, backgroundColor:renk, pointRadius:0,
+      borderWidth: sabitMi ? 1.4 : 2.4, borderDash: sabitMi ? [5,4] : [],
+      data: Array.from({length:N+1}, (_, k) => { const x = x0 + k*(x1-x0)/N; return {x, y:100*bb.cdf(x)}; }),
+    });
+    const ds = BEL.sabit.map(s => seri(s.b, s.renk, s.ad, true));
+    ds.push(seri(b, SEN_RENK[senKey()], PRESETS[SC.preset] ? PRESETS[SC.preset].ad : 'Özel ayar', false));
+    ds.push({type:'scatter', label:'orta değer', data:[{x:b.ort, y:50}], backgroundColor:C.text, pointRadius:4.5});
+    if(BEL.cdf) BEL.cdf.destroy();
+    BEL.cdf = new Chart($('cBel'), {data:{datasets:ds},
+      options:{maintainAspectRatio:false, animation:{duration:180},
+        plugins:{legend:{labels:{boxWidth:9, font:{size:10}, filter: it => it.text !== 'orta değer'}},
+          tooltip:{callbacks:{title:it => fmt(it[0].parsed.x) + ' parça',
+            label:c => ` ${c.dataset.label}: bunun altında kalma olasılığı %${f1(c.parsed.y)}`}}},
+        scales:{x:{type:'linear', title:{display:true, text:'tedarik penceresinde stoğu yetmeyen parça sayısı'},
+                   ticks:{font:{family:"ui-monospace,Menlo,monospace"}}},
+                y:{min:0, max:100, title:{display:true, text:'bu sayıyı aşmama olasılığı (%)'},
+                   ticks:{callback:v => '%' + v}}}}});
+    $('belNot').textContent = BEL.sabit.length
+      ? `${BEL.sabit.length} senaryo sabitlendi: ` + BEL.sabit.map(s => s.ad).join(' · ')
+      : 'karşılaştırmak için bir senaryoyu sabitleyip başkasına geçin';
+    /* --- doğrulama tablosu --- */
+    const d = DATA.mc.baz;
+    $('belDog').innerHTML = `<thead><tr><th></th><th>formül</th><th>deneme</th><th>fark</th></tr></thead><tbody>
+      <tr><td>açık parça</td><td>${f1(belirsizlik(PRESETS.baz, 9).ort)}</td><td>${fmt(d.acik_ort)}</td>
+          <td>${f1(Math.abs(belirsizlik(PRESETS.baz, 9).ort - d.acik_ort))}</td></tr>
+      <tr><td>%80 aralık</td><td>${belirsizlik(PRESETS.baz, 9).aralik(80).map(v => fmt(v)).join(' – ')}</td>
+          <td>${fmt(d.acik_p10)} – ${fmt(d.acik_p90)}</td><td>—</td></tr>
+      <tr><td>ek maliyet</td><td>${mM(belirsizlik(PRESETS.baz, 9).mal/1e6)}</td><td>${mM(d.ek_ort)}</td>
+          <td>%${String((100*Math.abs(belirsizlik(PRESETS.baz,9).mal/1e6 - d.ek_ort)/d.ek_ort).toFixed(1)).replace('.',',')}</td></tr>
+      </tbody>`;
   }
-  $('sY').addEventListener('input', fleet);
+
+  /* senaryo karşılaştırması — altı preset tek geçişte */
+  function belKars(){
+    const ks = Object.keys(PRESETS);
+    const hs = ks.map(k => ({k, ad:PRESETS[k].ad, b:belirsizlik(PRESETS[k], 9)}));
+    hs.sort((a, b2) => a.b.ort - b2.b.ort);
+    if(BEL.kars) BEL.kars.destroy();
+    BEL.kars = new Chart($('cBelKars'), {data:{labels:hs.map(h => h.ad), datasets:[
+      {type:'bar', label:`%${BEL.g} aralık`, data:hs.map(h => h.b.aralik(BEL.g)),
+       backgroundColor:hs.map(h => tint(SEN_RENK[h.k] || C.gri, .45)),
+       borderColor:hs.map(h => SEN_RENK[h.k] || C.gri), borderWidth:1.2, borderSkipped:false, barPercentage:.62},
+      {type:'scatter', label:'orta değer', data:hs.map((h, i) => ({x:h.b.ort, y:i})),
+       backgroundColor:C.text, pointRadius:4, pointStyle:'rectRot'}]},
+      options:{maintainAspectRatio:false, indexAxis:'y', animation:{duration:200},
+        plugins:{legend:{labels:{boxWidth:9, font:{size:10}}},
+          tooltip:{callbacks:{label:c => c.datasetIndex
+            ? ` orta değer ${fmt(c.parsed.x)} parça`
+            : ` %${BEL.g} aralık ${fmt(c.raw[0])} – ${fmt(c.raw[1])} parça`}}},
+        scales:{x:{title:{display:true, text:'açıkta kalan parça sayısı'}},
+                y:{ticks:{font:{size:10}, autoSkip:false}}}}});
+    BEL._ks = hs.map(h => h.k);
+  }
+
+  document.querySelectorAll('#v-senaryo .gv').forEach(c => c.addEventListener('click', () => {
+    BEL.g = +c.dataset.g;
+    document.querySelectorAll('#v-senaryo .gv').forEach(x => x.classList.toggle('on', x === c));
+    belCiz(); belKars();
+  }));
+  $('belSabit').addEventListener('click', () => {
+    if(BEL.sabit.length >= 3) BEL.sabit.shift();
+    const k = senKey();
+    BEL.sabit.push({ad:PRESETS[SC.preset] ? PRESETS[SC.preset].ad : 'Özel ayar', renk:SEN_RENK[k] || C.gri, b:belirsizlik(SC, 9)});
+    belCiz();
+  });
+  $('belTemiz').addEventListener('click', () => { BEL.sabit = []; belCiz(); });
+  $('cBelKars').addEventListener('click', ev => {
+    const pts = BEL.kars.getElementsAtEventForMode(ev, 'nearest', {intersect:false}, true);
+    if(!pts.length || !BEL._ks) return;
+    const k = BEL._ks[pts[0].index], p = PRESETS[k];
+    if(!p) return;
+    Object.assign(SC, {d:p.d, l:p.l, s:p.s, yeniDem:p.yeniDem, kuculDem:p.kuculDem, disOnly:p.disOnly, preset:k});
+    syncUI(); run(); belCiz(); ttsCiz();
+  });
 
   /* ---- canlı parametre paneli ---- */
   function paramHesap(w0, w1, w2, ber, tampon){
@@ -1486,38 +2063,40 @@ function renderSenaryo(){
     Object.assign(PB, {w0:3, w1:2, w2:1, ber:.65, tampon:0}); pSync(); pRun();
   });
 
-  /* ---- dayanıklılık histogramları ---- */
-  const th = DATA.ttsHist;
-  new Chart($('cTts'), {type:'bar', data:{labels:th.etiket, datasets:[
-    {label:'PN sayısı', data:th.sayi, borderRadius:3,
-     backgroundColor:th.etiket.map((_, i) => i < 2 ? 'rgba(224,106,106,.8)' : i < 4 ? 'rgba(232,163,61,.7)' : 'rgba(79,193,176,.6)')}]},
-    options:{maintainAspectRatio:false, plugins:{legend:{display:false},
-      tooltip:{callbacks:{title:it => it[0].label + ' gün', label:c => ` ${fmt(c.parsed.y)} PN`}}},
-      scales:{x:{title:{display:true, text:'hayatta kalma süresi (gün)'}, ticks:{font:{size:9}}},
-              y:{beginAtZero:true}}}});
-  const fh = DATA.fmvClpHist;
-  new Chart($('cFmv'), {type:'bar', data:{labels:fh.etiket.map(v => String(v).replace('.', ',')), datasets:[
-    {label:'PN sayısı', data:fh.sayi, backgroundColor:'rgba(91,143,214,.65)', borderRadius:3}]},
-    options:{maintainAspectRatio:false, plugins:{legend:{display:false}},
-      scales:{x:{title:{display:true, text:'FMV / CLP oranı'}, ticks:{font:{size:8.5}, maxTicksLimit:8}},
-              y:{beginAtZero:true}}}});
-
-  /* ---- Monte Carlo histogramı ---- */
-  const mcd = DATA.mc;
-  new Chart($('cMc'), {type:'bar', data:{labels:mcd.hist.etiket.map(v=>fmt(v)), datasets:[
-    {label:'Baz durum', data:mcd.hist.baz, backgroundColor:'rgba(79,193,176,.7)', borderRadius:2},
-    {label:'Motor ailesi krizi', data:mcd.hist.motor, backgroundColor:'rgba(224,106,106,.7)', borderRadius:2}]},
-    options:{maintainAspectRatio:false,
-      plugins:{legend:{labels:{boxWidth:9,font:{size:10}}},
-        tooltip:{callbacks:{title:it=>'~'+it[0].label+' PN açıkta', label:c=>` ${c.dataset.label}: ${fmt(c.parsed.y)} deneme`}}},
-      scales:{x:{title:{display:true,text:'tedarik penceresinde stoğu yetmeyen PN sayısı'},ticks:{font:{size:8.5},maxTicksLimit:9}},
-              y:{beginAtZero:true,title:{display:true,text:'deneme sayısı'}}}}});
+  /* ---- dayanıklılık: canlı TTS dağılımı (senaryoya bağlı) ---- */
+  const TTS_KOVA = [0,30,60,90,120,150,180,240,300,365,1e9];
+  const TTS_ET = ['0–30','30–60','60–90','90–120','120–150','150–180','180–240','240–300','300–365','365+'];
+  function ttsDagilim(cfg){
+    const say = new Array(10).fill(0);
+    for(let i = 0; i < NPN; i++){
+      const t = PN.t25[i]; if(t <= 0) continue;
+      let mDem = (1 + cfg.d/100) * (cfg.yeniDem && hasF(i,FL.YENI) ? cfg.yeniDem : 1);
+      if(cfg.kuculDem && hasF(i,FL.PO)) mDem *= cfg.kuculDem;
+      const g = PN.svc[i] / (t * mDem / 365);
+      for(let k = 0; k < 10; k++) if(g < TTS_KOVA[k+1]){ say[k]++; break; }
+    }
+    return say;
+  }
+  const TTS_BAZ = ttsDagilim(PRESETS.baz);
+  let ttsCh = null;
+  function ttsCiz(){
+    const d = ttsDagilim(SC), ayni = SC.preset === 'baz';
+    if(ttsCh){ ttsCh.data.datasets[1].data = d; ttsCh.data.datasets[1].hidden = ayni; ttsCh.update(); return; }
+    ttsCh = new Chart($('cTts'), {type:'bar', data:{labels:TTS_ET, datasets:[
+      {label:'Baz durum', data:TTS_BAZ, backgroundColor:tint(C.gri,.34), borderColor:C.gri, borderWidth:1, borderSkipped:false},
+      {label:'Senaryo', data:d, hidden:ayni, backgroundColor:tint(C.kritik,.5), borderColor:C.kritik, borderWidth:1, borderSkipped:false}]},
+      options:{maintainAspectRatio:false, animation:{duration:200},
+        plugins:{legend:{labels:{boxWidth:9, font:{size:10}}},
+          tooltip:{callbacks:{title:it => it[0].label + ' gün', label:c => ` ${c.dataset.label}: ${fmt(c.parsed.y)} parça`}}},
+        scales:{x:{title:{display:true, text:'eldeki stokla dayanma süresi (gün)'}, ticks:{font:{size:9}}},
+                y:{beginAtZero:true, title:{display:true, text:'parça sayısı'}}}}});
+  }
 
   /* ---- tornado duyarlılık ---- */
   const td = DATA.tornado;
   new Chart($('cTornado'), {type:'bar', data:{labels:td.etiket, datasets:[
     {label:'aralık ($M)', data:td.etiket.map((_,i)=>[td.dusuk[i], td.yuksek[i]]),
-     backgroundColor:'rgba(232,163,61,.55)', borderColor:C.amber, borderWidth:1.2, borderRadius:3, barPercentage:.6}]},
+     backgroundColor:tint(C.uyari,.42), borderColor:C.amber, borderWidth:1.2, borderRadius:3, barPercentage:.6}]},
     options:{maintainAspectRatio:false, indexAxis:'y',
       plugins:{legend:{display:false},
         tooltip:{callbacks:{label:c=>` ${mM(c.raw[0])} – ${mM(c.raw[1])}  ·  baz ${mM(td.baz)}`}}},
@@ -1541,7 +2120,8 @@ function renderSenaryo(){
               y1:{position:'right', beginAtZero:true, max:102, grid:{drawOnChartArea:false}, ticks:{callback:v=>'%'+v}}}}});
 
   pSync(); pRun();
-  syncUI(); run(); fleet();
+  syncUI(); run();
+  belCiz(); belKars(); ttsCiz();
 }
 
 /* =====================================================================
@@ -1555,6 +2135,10 @@ const SOZLUK = [
   ['TAT', 'Turn Around Time', 'Bir parçanın tamire gidip dönmesinin ya da yeni satın almanın süresi.'],
   ['TTS', 'Time to Survive · dayanma süresi', 'Eldeki kullanılabilir stok, günlük talebe bölününce kaç gün yeteceği.'],
   ['TTR', 'Time to Recover · toparlanma süresi', 'Bir parçayı yeniden servise sokmanın süresi. İç atölye varsa iç tamir, yoksa dış tamir süresidir.'],
+  ['Stok yeterlilik seviyesi', 'Talebi karşılama olasılığı', 'Belirli bir stok seviyesiyle, tedarik süresi boyunca gelen talebin tamamının karşılanma olasılığı. Parça detayındaki eğrinin dikey ekseni budur; %100\'e yaklaştıkça parça tükenmez. Tersi "stok yetmeme riski"dir.'],
+  ['Karar kanalı', 'Havuz · Tamir · Satın alma · İzle', 'Karar Merkezi\'nde her parçanın düştüğü kova. Aksiyon merdivenindeki en hızlı gerçek tedarik yolu kanalı belirler; donörden söküm kanal sayılmaz, hurda adayında tamir elenir. Açığı olmayan parça İzle\'ye düşer.'],
+  ['Sipariş penceresi', 'TTS − tedarik süresi', 'Sipariş için kalan gün. Dayanma süresinden tedarik süresi çıkarılır; eksi değer siparişin bugünden önce açılmış olması gerektiğini söyler. Karar Merkezi\'ndeki planlama ufku bu pencereye göre dörde bölünür.'],
+  ['Önerilen aksiyon', 'Parça bazlı tek karar', 'Merdivendeki seçenekler arasından, tamir ekonomisi ve hurda adaylığı elendikten sonra kalan en hızlı gerçek tedarik kanalı. Kartta bu kanalın stok yetmeme riskini nereye indirdiği de yazar; kararlar oturum içinde kaydedilir.'],
   ['Kırmızı liste', 'Stoğu dayanmayan parçalar', 'Stoğun, yenisi gelene kadar bitmesi beklenen parçalar. Bugün 134 parça, 72\'sinin siparişi bile yok.'],
   ['CLP', 'Katalog liste fiyatı', 'Bir parçayı sıfırdan satın almanın bedeli.'],
   ['FMV', 'Adil piyasa değeri', 'Bir parçanın ikinci el piyasa değeri. Ortalaması liste fiyatının %43\'ü.'],
@@ -1572,7 +2156,7 @@ const SOZLUK = [
   ['MAPE', 'Tahmin doğruluğu ölçüsü', 'Yüzde cinsinden hata. Faz geçiş kapılarında kullanılır.'],
   ['MLP', 'Yapay sinir ağı', 'Kullanılan model mimarisi, katmanlı bir sinir ağı.'],
   ['Poisson', 'Poisson dağılımı', 'Sayım verisi için doğru olasılık modeli. Emniyet stoğu ve simülasyonun temeli.'],
-  ['Monte Carlo', 'Simülasyon yöntemi', 'Rastgele senaryoları binlerce kez koşup sonuç dağılımını çıkarmak. Burada 800 denemelik belirsizlik testi.'],
+  ['Belirsizlik denemesi', 'Dağılım hesabı', 'Talep kesin bir sayı değil dağılım olduğu için, sonucu tek değer yerine aralık olarak veririz. Tarayıcıdaki hesap kapalı formüldür; build sırasında ayrıca rastgele denemelerle koşulup doğrulanır.'],
   ['Cold-start', 'Soğuk başlangıç', 'Geçmiş verisi olmayan yeni parçanın tahmini. Benzerlerinden başla, gözlem geldikçe düzelt.'],
   ['MTBUR', 'Sökümler arası ortalama süre', 'Bir parçanın plansız sökümler arası ortalama çalışma süresi. Üretici verisidir.'],
   ['Phase-out', 'Filodan çıkış', 'Emekli edilen modellere bağlı parçaların stoktan eritilmesi. Takvimle değil sinyalle yönetilir.'],
@@ -1600,5 +2184,5 @@ document.addEventListener('keydown', e => { if(e.key === 'Escape') $('dicBox').c
 dicCiz('');
 
 /* ---------------- başlat ---------------- */
-const RENDER = {kokpit:renderKokpit, watch:renderWatch, ongoru:renderOngoru, harita:renderHarita, senaryo:renderSenaryo};
-showView('kokpit');
+const RENDER = {karar:renderKarar, watch:renderWatch, ongoru:renderOngoru, harita:renderHarita, senaryo:renderSenaryo};
+showView('karar');

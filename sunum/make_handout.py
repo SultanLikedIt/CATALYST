@@ -90,7 +90,7 @@ for i, (v, l) in enumerate(kan):
 y -= 28 * mm
 
 yaz(M, y, 'ÇÖZÜM: ÜÇ KATMAN, SALT OKUNUR MİMARİ (KAYNAKLARA YAZILMAZ)', 'Mono', 8, TEAL)
-katman = [('1 · GÖRÜNÜRLÜK', 'Tek komponent kaydı ve sermaye kokpiti. Gerçek tedarik süreleri olaylardan ölçülür. İlk gün değeri, stoğu biten 72 parçanın yakalanması. Sonraki faza geçiş veri kalitesine bağlı.'),
+katman = [('1 · GÖRÜNÜRLÜK', 'Tek komponent kaydı ve envanter sermayesinin tek ekrandan izlenmesi. Gerçek tedarik süreleri olaylardan ölçülür. İlk gün değeri, stoğu biten 72 parçanın yakalanması. Sonraki faza geçiş veri kalitesine bağlı.'),
           ('2 · ÖNGÖRÜ', 'Segmentli tahmin, kesikli talep yöntemleri, aralık projeksiyonu ve geçmişi olmayan parça tahmini. Öneri modunda çalışır, doğruluk ve kabul oranı eşiğiyle ilerler.'),
           ('3 · AKSİYON', 'Stoğu riske giren parçada zorunlu aksiyon, süre ve maliyete göre sıralanan seçenekler, tamir kararı motoru, emekli filo tetikleri ve havuz koordinasyonu. Kriz planı önceden hazır.')]
 yy = y - 5 * mm
@@ -106,7 +106,7 @@ yaz(M, y - 5 * mm, "Yerde bekleyen uçak oranı düşer (ana ölçüt)  ·  sipa
     'Ar', 8.6, INK, mak=W - 2 * M)
 y -= 16 * mm
 yaz(M, y, 'CANLI DEMO AKIŞI (~6 DAKİKA)', 'Mono', 8, TEAL)
-demo = [('1', 'Kokpit. Envanterin genel görünümü ve vurgu kartı: stoğu biten 72 parça, siparişsiz, 11 tanesi kritik.'),
+demo = [('1', 'Karar merkezi. 5.000 parça tek kural dizisinden geçer, her biri tek kanala düşer; pencere alarmında sipariş tarihi kaçmış 42 parça.'),
         ('2', 'Watchlist. Sıralamanın birincisi PN-101741 sahada gerçekten riskli. Yanında ne yapılacağı süre ve maliyetle sıralı.'),
         ('3', 'Öngörü ve AI. Segmentasyon, tahmin gezgini, cold-start tahmini ve geriye dönük test, binde 4 hata.'),
         ('4', 'Harita. Türkiye 16 havalimanı ve İstanbul merkezli küresel ağ. Kriz etkisi harita üzerinde.'),

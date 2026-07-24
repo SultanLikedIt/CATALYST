@@ -60,6 +60,7 @@ global.document = {
   addEventListener() {},
 };
 global.window = global;
+global.scrollTo = () => {};
 global.setTimeout = fn => fn();          // zamanlanmış işleri senkron çalıştır
 
 /* ---- Chart stub ---- */
@@ -79,13 +80,13 @@ function Chart(el, cfg) {
   this.update = () => {}; this.destroy = () => {};
   charts.push(this);
 }
-Chart.defaults = { color: '', borderColor: '', font: {}, plugins: { legend: { labels: {} } } };
+Chart.defaults = { color: '', borderColor: '', font: {}, plugins: { legend: { labels: {} }, tooltip: {} } };
 global.Chart = Chart;
 global.DATA = DATA;
 
 /* ---- app.js'i çalıştır ---- */
 const src = fs.readFileSync(ROOT + '/assets/app.js', 'utf8');
-try { eval(src + '\n;global.__APP={senaryoHesap,poissonMin,fmt,f1,W,SC,PRESETS,H};'); } catch (e) { console.error('✗ ÜST DÜZEY HATA:', e.stack.split('\n').slice(0, 4).join('\n')); process.exit(1); }
+try { eval(src + '\n;global.__APP={senaryoHesap,poissonMin,fmt,f1,W,SC,PRESETS,H,kararMotoru,kanalSec,KOVA,kmWatch,belirsizlik,senaryoMu};'); } catch (e) { console.error('✗ ÜST DÜZEY HATA:', e.stack.split('\n').slice(0, 4).join('\n')); process.exit(1); }
 
 function step(name, fn) {
   try { fn(); console.log('✓', name); }
@@ -93,7 +94,9 @@ function step(name, fn) {
 }
 
 /* tüm view'lar */
-step('kokpit (başlangıçta render)', () => { if (!els['cCap']) throw new Error('cCap yok'); });
+step('karar merkezi (başlangıçta render)', () => {
+  if (!els['v-karar']._html.includes('Karar yönlendirici')) throw new Error('açılış görünümü karar merkezi değil');
+});
 step('watchlist render', () => els['tabs']._fire('click', { target: { closest: () => ({ dataset: { v: 'watch' } }) } }));
 step('öngörü render', () => els['tabs']._fire('click', { target: { closest: () => ({ dataset: { v: 'ongoru' } }) } }));
 step('harita render', () => els['tabs']._fire('click', { target: { closest: () => ({ dataset: { v: 'harita' } }) } }));
@@ -127,6 +130,96 @@ step('poissonMin akıl sağlığı', () => {
 /* yeni: ROI + eğri + OEM preset + PN-önekli arama */
 step('W.showDetail eğri çizer (destroy dahil)', () => {
   __APP.W.showDetail(0); __APP.W.showDetail(5);   // ikincisi destroy yolunu test eder
+});
+step('karar merkezi — motor tutarlılığı', () => {
+  const d = __APP.kararMotoru();
+  const P = DATA.pn;
+  /* kanal toplamları 5000'e, izle açıksız parça sayısına eşit olmalı */
+  const top = d.say.izle + d.say.pool + d.say.tamir + d.say.alim;
+  if (top !== 5000) throw new Error('kanal toplamı 5000 değil: ' + top);
+  let izleBek = 0;
+  for (let i = 0; i < P.id.length; i++) if (P.min33[i] <= P.svc[i]) izleBek++;
+  if (d.say.izle !== izleBek) throw new Error(`izle ${d.say.izle} ≠ açıksız ${izleBek}`);
+  /* her parçanın kovası kanalSec ile birebir — watchlist önerisiyle aynı kod yolu */
+  for (let i = 0; i < P.id.length; i++) {
+    const bek = P.min33[i] <= P.svc[i] ? 'izle' : __APP.KOVA[__APP.kanalSec(i).best.t];
+    if (d.kanal[i] !== bek) throw new Error(`PN idx ${i}: kova ${d.kanal[i]} ≠ kanalSec ${bek}`);
+  }
+  /* pencere toplamı + alarm kümesi tanımı */
+  const pTop = d.pen.gecmis.n + d.pen.p030.n + d.pen.p3090.n + d.pen.p90.n;
+  if (pTop !== 5000) throw new Error('pencere toplamı 5000 değil: ' + pTop);
+  for (const i of d.alarm) {
+    if (!(d.kalan[i] < 0 && P.po[i] === 0)) throw new Error('alarm tanımı dışı parça: idx ' + i);
+    if (!(P.flags[i] & 2)) throw new Error('alarm parçası SİPARİŞSİZ bayraklı değil: idx ' + i);
+  }
+  if (d.pen.gecmis.sip0 !== d.alarm.length) throw new Error('alarm sayısı pencereyle çelişiyor');
+  /* fazla stok tanımı */
+  for (const i of d.fazla.idx.slice(0, 50)) if (P.svc[i] <= P.max33[i]) throw new Error('fazla değilken listede: idx ' + i);
+  console.log(`   kanallar: havuz ${d.say.pool} · tamir ${d.say.tamir} · alım ${d.say.alim} · izle ${d.say.izle} | alarm ${d.alarm.length} | fazla ${d.fazla.n}`);
+});
+step('karar merkezi — görünüm + köprüler', () => {
+  els['tabs']._fire('click', { target: { closest: () => ({ dataset: { v: 'karar' } }) } });
+  const h = els['v-karar']._html;
+  for (const t of ['Karar yönlendirici', 'Sipariş penceresi alarmı', 'Planlama ufku', 'Fazla stok dengeleme',
+                   'HAVUZ / EXCHANGE', 'rotayı çiz'])
+    if (!h.includes(t)) throw new Error('karar görünümünde eksik: ' + t);
+  const d = __APP.kararMotoru();
+  /* kanal satırı → watchlist süzgeci */
+  els['v-karar']._fire('click', { target: { closest: s => s === '.krow' ? { dataset: { k: 'pool' } } : null } });
+  if (__APP.W.kanal !== 'pool') throw new Error('kanal köprüsü W.kanal kurmadı');
+  if (!els['wNote'].textContent.includes(__APP.fmt(d.say.pool))) throw new Error('watchlist havuz sayısını süzmedi: ' + els['wNote'].textContent);
+  /* pencere kartı → watchlist süzgeci */
+  els['v-karar']._fire('click', { target: { closest: s => s === '.ufuk' ? { dataset: { p: 'p030' } } : null } });
+  if (__APP.W.pencere !== 'p030' || __APP.W.kanal !== '') throw new Error('pencere köprüsü süzgeci değiştirmedi');
+  if (!els['wNote'].textContent.includes(__APP.fmt(d.pen.p030.n))) throw new Error('watchlist 0–30 penceresini süzmedi');
+  /* alarm satırı → parça detayı */
+  const hedefIdx = d.alarm[0];
+  els['v-karar']._fire('click', { target: { closest: s => s === '.alarmi' ? { dataset: { i: String(hedefIdx) } } : null } });
+  if (__APP.W.sel !== hedefIdx) throw new Error('alarm köprüsü detay açmadı');
+  /* transfer kartı → harita (depo kanalı önseçili) */
+  els['v-karar']._fire('click', { target: { closest: s => s === '.tgo' ? { dataset: { i: String(d.fazla.idx[0]), h: 'TZX' } } : null } });
+  if (!__APP.H.wp || __APP.H.wp.i !== d.fazla.idx[0]) throw new Error('transfer köprüsü haritayı kurmadı');
+  els['v-harita']._fire('click', { target: { closest: sel => sel === '[data-wkapat]' ? {} : null } });
+  /* süzgeç göstergesi temizlenebilir */
+  __APP.W.kanal = 'tamir'; __APP.W.apply();
+  if (!els['wKmf']._html.includes('Tamir')) throw new Error('süzgeç çipi görünmedi');
+  els['v-watch']._fire('click', { target: { closest: s => s === '[data-kmf]' ? {} : null } });
+  if (__APP.W.kanal !== '') throw new Error('süzgeç çipi temizlemedi');
+});
+step('parça detayı — önerilen aksiyon + karar kaydı', () => {
+  const wclick = k => els['v-watch']._fire('click', { target: { closest: s => s === '.kbtn' ? { dataset: { k } } : null } });
+  /* açığı olan bir PN bul (min33 > svc) — öneri "aksiyon gerekmiyor" değil gerçek kanal olmalı */
+  const iAcik = DATA.pn.id.findIndex((_, i) => DATA.pn.min33[i] - DATA.pn.svc[i] > 3);
+  if (iAcik < 0) throw new Error('açığı olan PN bulunamadı');
+  __APP.W.showDetail(iAcik);
+  const h = els['wDet']._html;
+  for (const t of ['Önerilen aksiyon', '2033 tahmini yıllık ihtiyaç', 'Stok yetmeme riski', 'Risk skoru',
+                   'Canlı stok yeterlilik seviyesi', 'karşılanma olasılığını',
+                   'Tahmin: 2025 gerçekleşen ve 2033 çeyreklik profil', 'haritada göster'])
+    if (!h.includes(t)) throw new Error('detayda eksik: ' + t);
+  for (const t of ['Explainable', 'Neden kritik'])           // control-tower'dan alınmadı, geri gelmemeli
+    if (h.includes(t)) throw new Error('kaldırılmış blok geri geldi: ' + t);
+  /* öneri ile merdivendeki vurgulu satır aynı kanal olmalı — iki ekran çelişemez */
+  const oneri = h.match(/<div class="ad"[^>]*>([^<]+)</)[1].trim();
+  const vurgu = h.match(/class="step best"[\s\S]*?<span class="nm">([^<]+)/)[1].trim();
+  if (oneri !== vurgu) throw new Error(`öneri "${oneri}" ≠ merdiven vurgusu "${vurgu}"`);
+  if (!/%\d+<\/i> →/.test(h)) throw new Error('risk öncesi/sonrası yazılmadı');
+
+  wclick('onay');
+  if (!__APP.W.karar[iAcik]) throw new Error('karar kaydedilmedi');
+  if (!els['wKarar']._html.includes('Karar kaydı')) throw new Error('karar satırı yazılmadı');
+  wclick('talep');
+  if (!/Satınalma talebi taslağı/.test(els['wKarar']._html)) throw new Error('satınalma taslağı yazılmadı');
+  __APP.W.hedef = '';
+  wclick('incele');                                          // hedefsiz rota çizilmemeli
+  if (__APP.H.wp) throw new Error('hedef seçilmeden haritaya atladı');
+  wclick('yoksay');
+  if (__APP.W.karar[iAcik]) throw new Error('yoksay kaydı silmedi');
+
+  /* açığı olmayan PN: aksiyon önerilmez, risk tek değer gösterilir */
+  const iBol = DATA.pn.id.findIndex((_, i) => DATA.pn.svc[i] > DATA.pn.min33[i] + 5);
+  __APP.W.showDetail(iBol);
+  if (!els['wDet']._html.includes('Aksiyon gerekmiyor')) throw new Error('açıksız PN için aksiyon önerildi');
 });
 step('PN-önekli arama eşleşir', () => {
   __APP.W.reset(); __APP.W.apply();               // önceki adımların filtrelerini temizle
@@ -221,7 +314,7 @@ step('parça rotası katmanı', () => {
 step('watchlist → haritada göster köprüsü', () => {
   __APP.H._parcaGoster(0, 'AYT', 'pool');
   if (!__APP.H.wp) throw new Error('wp kurulmadı');
-  if (!els['hRota']._html.includes('Watchlist')) throw new Error('wp paneli dolmadı');
+  if (!els['hRota']._html.includes('seçili parça')) throw new Error('wp paneli dolmadı');
   if (__APP.H.rk == null) throw new Error('kanal önseçimi yapılmadı');
   els['v-harita']._fire('click', { target: { closest: sel => sel === '[data-wkapat]' ? {} : null } });
   if (__APP.H.wp) throw new Error('kapat çalışmadı');
@@ -265,10 +358,38 @@ step('derin analiz payload — MC/tornado/opt/backtest', () => {
 });
 step('analiz kartları gömülü', () => {
   const all = Object.values(els).map(e => e._html).join(' ');
-  if (!all.includes('Monte Carlo doğrulaması')) throw new Error('MC kartı yok');
+  if (!all.includes('Belirsizlik denemeleri')) throw new Error('belirsizlik bölümü yok');
   if (!all.includes('Kaynak önceliklendirme')) throw new Error('opt kartı yok');
   if (!all.includes('Geriye dönük test')) throw new Error('backtest kartı yok');
   if (all.includes('GERİ YAZMA YOK')) throw new Error('mimari SVG geri gelmiş — sade sürümde olmamalı');
+  /* kullanıcı yasakladı: "Monte Carlo" adı hiçbir ekranda geçmemeli */
+  if (/Monte\s*Carlo/i.test(all)) throw new Error('yasaklı ad "Monte Carlo" ekranda görünüyor');
+  /* kesilen düşük bilgili bloklar geri gelmemeli */
+  if (all.includes('Kıtlık sensörü')) throw new Error('FMV/CLP kıtlık sensörü geri gelmiş');
+  if (all.includes('Filo kaydırıcısı')) throw new Error('filo kaydırıcısı geri gelmiş');
+});
+step('belirsizlik motoru — kapalı form payload ile tutarlı', () => {
+  const b = __APP.belirsizlik(__APP.PRESETS.baz, 9);
+  const d = DATA.mc.baz;
+  if (Math.abs(b.ort - d.acik_ort) > 6) throw new Error(`baz ortalama ${b.ort.toFixed(1)} ≠ payload ${d.acik_ort}`);
+  if (Math.abs(b.mal/1e6 - d.ek_ort) / d.ek_ort > 0.06) throw new Error(`baz maliyet ${(b.mal/1e6).toFixed(2)} ≠ payload ${d.ek_ort}`);
+  const m = __APP.belirsizlik(__APP.PRESETS.motor, 9);
+  if (Math.abs(m.ort - DATA.mc.motor.acik_ort) > 12) throw new Error(`motor ortalama ${m.ort.toFixed(1)} ≠ ${DATA.mc.motor.acik_ort}`);
+  if (!(m.ort > b.ort * 1.7)) throw new Error('motor krizi belirsizliği yeterince büyütmüyor');
+  /* aralık genişliği güven seviyesiyle artmalı */
+  const [a80, b80] = b.aralik(80), [a95, b95] = b.aralik(95);
+  if (!(b95 - a95 > b80 - a80)) throw new Error('%95 aralık %80’den geniş değil');
+  /* belirsizliğin çoğu Poisson gürültüsünden gelmeli, talep bandından değil */
+  if (!(b.bantPayi > 2 && b.bantPayi < 40)) throw new Error('bant payı beklenen aralıkta değil: ' + b.bantPayi.toFixed(1));
+  /* CDF monoton ve 0–1 arası */
+  let onceki = -1;
+  for (let x = b.ort - 3*b.sd; x <= b.ort + 3*b.sd; x += b.sd/4) {
+    const v = b.cdf(x);
+    if (v < onceki - 1e-9) throw new Error('CDF monoton değil');
+    if (v < 0 || v > 1) throw new Error('CDF 0–1 dışında');
+    onceki = v;
+  }
+  console.log(`   baz ${b.ort.toFixed(0)} PN (%80 ${b.aralik(80).map(v=>v.toFixed(0)).join('–')}) · ${(b.mal/1e6).toFixed(1)}M$ · bant payı %${b.bantPayi.toFixed(0)} | motor ${m.ort.toFixed(0)} PN`);
 });
 
 
@@ -297,7 +418,8 @@ step('render: BER virgül + $12,1M + ROI', () => {
   if (!all.includes('BER eşiği 0,65')) throw new Error('footer BER eşiği 0,65 render edilmedi');
   if (!all.includes('$12,1M')) throw new Error('$12,1M render edilmedi');
   if (all.includes('12,2M')) throw new Error('12,2M hâlâ görünüyor');
-  if (!all.includes("%39,2'si")) throw new Error("39,2'si eki render edilmedi");
+  /* tr-TR iyelik eki gerçekten render ediliyor mu (eski %39,2'si kokpitteydi, kaldırıldı) */
+  if (!all.includes("%14,6'ı")) throw new Error("14,6'ı eki render edilmedi");
 });
 
 console.log('\ncharts oluşturuldu:', charts.length);

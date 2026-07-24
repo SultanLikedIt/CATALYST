@@ -9,6 +9,7 @@ from pptx import Presentation
 from pptx.util import Inches, Pt, Emu
 from pptx.dml.color import RGBColor
 from pptx.enum.text import PP_ALIGN, MSO_ANCHOR
+from pptx.enum.shapes import MSO_SHAPE
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 CH = os.path.join(HERE, 'charts')
@@ -115,13 +116,24 @@ def balon(slide, x, y, w, h, metin, kim, sag=False):
     m.font.name = FONT; m.font.size = Pt(13.5); m.font.bold = False; m.font.color.rgb = BEYAZ
     return r
 
-def resim_ekle(slide, dosya, x, y, w, h, cerceve=True):
+def resim_ekle(slide, dosya, x, y, w, h, cerceve=True, mat=False):
+    """mat=True: koyu slaytta AÇIK ekran görüntüsü parlamasın diye resmin altına
+    bir kademe koyu 'bezel' koyar — göz kartı 'monitör' olarak okur."""
     if not os.path.exists(dosya):
         print('! görsel yok, atlandı:', os.path.basename(dosya))
         return None
+    if mat:
+        d = 0.055
+        arka = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE,
+                                      Inches(x - d), Inches(y - d), Inches(w + 2*d), Inches(h + 2*d))
+        arka.fill.solid(); arka.fill.fore_color.rgb = RGBColor(0x2A, 0x17, 0x40)
+        arka.line.color.rgb = RGBColor(0x8A, 0x6B, 0xB0); arka.line.width = Pt(0.75)
+        arka.shadow.inherit = False
+        arka.text_frame.text = ''
     pic = slide.shapes.add_picture(dosya, Inches(x), Inches(y), Inches(w), Inches(h))
     if cerceve:
-        pic.line.color.rgb = CIZGI; pic.line.width = Pt(1)
+        pic.line.color.rgb = RGBColor(0xD8, 0xDC, 0xE0) if mat else CIZGI
+        pic.line.width = Pt(0.75 if mat else 1)
     return pic
 
 def notlar(slide, metin):
@@ -200,7 +212,7 @@ bul(S[3], 'Title 74').text_frame.paragraphs[0].runs[0].text = 'Prototip: Tek Dos
 for ad in ('TextBox 40', 'TextBox 41', 'TextBox 42', 'TextBox 43'):
     run_yaz(bul(S[3], ad).text_frame, [])
 kartlar = [
-    ('Kokpit', 'Envanter, para akışı, kırmızı liste', 'kokpit.png'),
+    ('Karar Merkezi', 'Kanal dağılımı, pencere alarmı, fazla stok', 'karar.png'),
     ('Watchlist', 'Risk sırası + önerilen aksiyon', 'watch.png'),
     ('Öngörü & AI', 'Segment tahmini + cold-start', 'ongoru.png'),
     ('Harita', '25 istasyon, krizin ağa etkisi', 'harita.png'),
@@ -215,8 +227,8 @@ for g, (baslik, alt, shot) in zip(gruplar, kartlar):
     run_yaz(tbs[0].text_frame, [baslik])
     run_yaz(tbs[1].text_frame, [alt])
     tbs[1].text_frame.vertical_anchor = MSO_ANCHOR.TOP
-    resim_ekle(S[3], os.path.join(SH, shot), gx + 0.37, gy + 0.98, 3.90, 2.06)
-notlar(S[3], 'Beş ekranı canlı gösteriyoruz. Dashboard tek bir HTML dosyası, USB’den açılıyor ve salon ağına ihtiyaç duymuyor. Her sayı koddan yeniden üretilebiliyor. Demo akışı: kokpitteki alarmdan watchlist’e, oradan parça detayına, sonra harita ve senaryoya.')
+    resim_ekle(S[3], os.path.join(SH, shot), gx + 0.37, gy + 0.98, 3.90, 2.06, mat=True)
+notlar(S[3], 'Beş ekranı canlı gösteriyoruz. Dashboard tek bir HTML dosyası, USB’den açılıyor ve salon ağına ihtiyaç duymuyor. Her sayı koddan yeniden üretilebiliyor. Demo akışı: karar merkezindeki pencere alarmından watchlist’e, oradan parça detayına, sonra harita ve senaryoya.')
 
 # ============ S5 · ÖNGÖRÜ MOTORU + COPILOT (akış + sohbet maketi) ============
 bul(S[4], 'Title 28').text_frame.paragraphs[0].runs[0].text = 'Öngörü Motoru ve Copilot'

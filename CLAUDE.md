@@ -339,7 +339,7 @@ last-time-buy tetiği); **FMV/CLP izleme** (0,43 bazından kalıcı yükseliş =
 scrap anomali dedektörü (159 PN); dış istasyon SLA karnesi; kanibalizasyon borç defteri.
 
 **Vitrin/AI:** AOG Copilot (RAG + aksiyon sıralayıcı fonksiyon çağrısı; yalnız okur/önerir);
-Monte Carlo stok-out simülatörü (Poisson örneklem → P(stokout|s) eğrisi; veri zaten Poisson);
+belirsizlik denemeleri / stok-out simülatörü (Poisson örneklem → P(stokout|s) eğrisi; veri zaten Poisson);
 mimari hikâyesi: kaynaklardan CDC → event bus → tek veri modeli → analitik → uygulamalar;
 **"AMOS'u değiştirmiyoruz, üzerine karar katmanı"** (hiçbir kaynağa yazma yok).
 
@@ -361,7 +361,7 @@ mimari hikâyesi: kaynaklardan CDC → event bus → tek veri modeli → analiti
    siparişi yok — 11'i AOG kritik."
 2. **Watchlist (risk skoru sıralı):** PN-101741 vakası — skor 1 ↔ sahada gerçekten kırmızı.
 3. **Arıza senaryosu:** alarm → aksiyon sıralayıcı (süre+maliyet sıralı seçenekler).
-4. **Öngörü:** çeyreklik grafik (Q3 zirvesi) + tek PN'de canlı Monte Carlo eğrisi.
+4. **Öngörü:** çeyreklik grafik (Q3 zirvesi) + tek PN'de canlı stok yeterlilik eğrisi.
 5. **Filo slider 2025→2033:** talep bandı, kategori ayrışması, float sayacı $23,3M→$39,0M.
 6. **Stres testi düğmesi:** "motor ailesi krizi" — yeni nesil talep ×1,5, dış TAT ×1,3 →
    kırmızı sayısı ve $ etkisi canlı yeniden hesap.
@@ -451,8 +451,10 @@ modeliyle gidilir — Catalyst bu modelin yazılım hâlidir.*
 ## 10. Mevcut Teslimatlar ve Tasarım Sistemi
 
 **Dashboard teslimatı (Temmuz 2026, Claude Code):** `catalyst.html` — core.py →
-build_dashboard.py hattından üretilen tek dosyalık interaktif prototip. Kapsam: sermaye kokpiti,
-pool/exchange (3,6× anomali) + gayrifaal kuyruğu kartları, watchlist (159 hurda anomalisi + 150
+build_dashboard.py hattından üretilen tek dosyalık interaktif prototip. Kapsam: karar merkezi
+(kanal dağılımı, sipariş penceresi alarmı, planlama ufku, fazla stok dengeleme — açılış ekranı;
+sermaye kokpiti sekmesi 24 Tem 2026'da kullanıcı isteğiyle KALDIRILDI, geri ekleme önerme),
+watchlist (159 hurda anomalisi + 150
 pool bağımlı filtreleri dahil), ABC×XYZ matrisi, tahmin gezgini + hata analizi (tam tahmin
 vektörü model_results.json'da), cold-start Bayes demosu, phase-out planlayıcısı, iki modlu etkileşimli
 harita — Türkiye (16 yurt içi havalimanı, gömülü kontur) + küresel ağ (İstanbul merkezli

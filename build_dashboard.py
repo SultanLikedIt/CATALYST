@@ -48,7 +48,7 @@ def build_payload():
     # ---------------------------------------------------------------- KPI
     kpi = dict(
         pn=len(c),
-        # sermaye kokpiti (fiziksel = toplam − açık PO)
+        # sermaye özeti (fiziksel = toplam − açık PO)
         fmv=r(V / 1e6, 1), clp=r(c.DEGER_CLP.sum() / 1e6, 1),
         fmv_clp_medyan=r(c.FMV_CLP.median(), 3),
         svc_adet=int(c.SVC.sum()), svc_fmv=r((c.SVC * c.FMV_USD).sum() / 1e6, 1),
@@ -303,7 +303,7 @@ def build_payload():
                         sayi=[int(v) for v in fc_counts], medyan=r(fc.median(), 3))
 
     # =====================================================================
-    # DERİN ANALİZ KATMANI — Monte Carlo · duyarlılık · optimizasyon · backtest
+    # DERİN ANALİZ KATMANI — belirsizlik denemeleri · duyarlılık · optimizasyon · backtest
     # Hepsi deterministik (sabit tohum); jüri önünde yeniden üretilebilir.
     # =====================================================================
     rng = np.random.default_rng(42)
@@ -316,7 +316,7 @@ def build_payload():
     yeni_v = c.YENI_NESIL.values
     dis_v = c.ATOLYE.eq('YOK').values
 
-    # ---- (1) Monte Carlo: 2033 belirsizliği ------------------------------
+    # ---- (1) Belirsizlik denemeleri: 2033 dağılımı -----------------------
     # Her denemede: bant içinden küresel büyüme çarpanı u ~ U(alt/motor, üst/motor)
     # + Poisson talep gürültüsü. Metrik: lead-time talebi bugünkü kullanılabilir stoğu
     # aşan PN sayısı ve açığı kapatma maliyeti. Motor krizi: yeni nesil ×1,5 + dış lead ×1,3.
@@ -553,7 +553,7 @@ def render(payload: dict) -> str:
     data = json.dumps(payload, ensure_ascii=False, separators=(',', ':'))
     return f"""<!DOCTYPE html><html lang="tr"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="color-scheme" content="dark">
+<meta name="color-scheme" content="light">
 <title>Catalyst — Komponent Envanter Karar Desteği</title>
 <style>{css}</style></head>
 <body>

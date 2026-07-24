@@ -22,7 +22,7 @@ UST = 64                  # sabit üst bar; kadraj bunun altında kalsın
 # birden çok seçici verilirse kadraj birleşimdir. hiza: en genişletilirken hangi kenar sabit
 # kalsın ('l' sol, 'r' sağ, 'c' orta) — komşu kartı ortasından kesmemek için.
 SHOTS = [
-    ('kokpit',  'kokpit',   ['#v-kokpit .callout.red', '#v-kokpit .grid.auto'], 'c'),  # kör nokta + KPI şeridi
+    ('karar',   'karar',    ['#v-karar .grid.g4', '#v-karar .grid.g21'],        'c'),  # KPI şeridi + yönlendirici/alarm
     ('watch',   'watch',    ['#v-watch .card'],                                 'c'),  # filtreler + risk tablosu
     ('ongoru',  'ongoru',   ['#cBant||.card', '#cKat||.card'],                  'c'),  # 2033 bandı · göç · kategori
     ('harita',  'harita',   ['svgfit:#hSvg'],                                   'c'),  # Türkiye haritasının çizili alanı
