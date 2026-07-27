@@ -470,11 +470,63 @@ ML modeli 3 tohumlu topluluk + en-iyi-epoch geri yükleme ile deterministik; Q4 
 - `kontrol-kulesi-detayli-analiz.html` — v3 detaylı analiz + feature kataloğu (uzun gerekçeler)
 - `kontrol-kulesi-vizyon-dokumani.html` — **v4 MASTER**: 3 setin birleşik analizi + vizyon
 
-**Tasarım tokenları (dashboard'da görsel tutarlılık istenirse):**
-dark tema — bg `#0B1220`, panel `#121B2E`, panel-2 `#182338`, çizgi `#263450`/`#1A2438`,
-metin `#EAF0F7`, muted `#9AA8C0`, dim `#77869C`, vurgu teal `#4FC1B0`, amber `#E8A33D`,
-kırmızı `#E06A6A`. Fontlar: Space Grotesk (başlık), Inter (gövde), JetBrains Mono (sayı/kod).
+**Web uygulaması teslimatı (Tem 2026, `web/`):** `catalyst.html`'in TÜM özelliklerini koruyan
+React 19 + TypeScript + Vite sürümü. Amaç: 3D harita, sahne animasyonları ve yeni ekranlar için
+geliştirilebilir taban. Tek dosyalık prototip DOKUNULMADAN duruyor (sunum yedeği).
+- **Yığın:** React 19 · TS 7 · Vite 8 · framer-motion (geçişler) · Chart.js + react-chartjs-2
+  (25 grafik birebir taşındı) · zustand (ekranlar arası köprüler + senaryo parametreleri) ·
+  three + @react-three/fiber + drei (kurulu, ayrı chunk, 3D için hazır) · vite-plugin-singlefile
+  (offline tek dosya: `npm run build:tek-dosya`).
+- **Katmanlar:** `src/engine/` saf hesap (core.py formüllerinin TS ikizi, DOM bilmez) ·
+  `src/data/` payload.json + tipler · `src/design/` tokenlar · `src/views/` ekranlar.
+  Bir sayı iki ekranda görünüyorsa ikisi de aynı engine fonksiyonunu çağırır.
+- **Veri hattı:** `build_dashboard.py` artık `web/src/data/payload.json`'u da yazar; Python
+  yoksa `node web/scripts/veri-cikar.mjs` catalyst.html'den birebir aynı JSON'u ayıklar.
+- **Parite:** `cd web && npm test` → 34 kontrol (694/641/217/3.448 · alarm 42 · 134/22 ·
+  motor 477 · OEM 283 · belirsizlik 389 [%80: 371–408] · motor 797). Taşımada sayı kaybı yok.
+- **3D seam'i:** harita üçe bölündü — `views/harita/haritaVeri.ts` (projeksiyon/mesafe/süre/kanal,
+  render'dan bağımsız), `useGorunum.ts` (2D jestler, 3D'de OrbitControls olur), `Harita.tsx`
+  (SVG çizimi + paneller). 3D küre eklenirken yalnız çizim bloğu değişir.
+- **Bilinen karar:** sekme geçişi yalnız giriş animasyonu. `AnimatePresence mode="wait"` +
+  lazy sekme askıya alınınca çıkış "tamamlandı" saymıyor ve ekran kilitleniyor (ölçüldü).
+  Sekme parçaları ilk boyamadan 400 ms sonra prefetch edilir, geçişte yükleme yazısı görünmez.
+
+**CODE — Component Decision Engine (Tem 2026, web'in açılış ekranı):** eski "Karar Merkezi"
+sekmesinin yerine geçti (`views/Code.tsx`; `KararMerkezi.tsx` silindi). Kullanıcı isteği: ilk
+sayfa baştan sona tek bir karar ürünü olsun, tasarım **Palantir Gotham havasında koyu operasyon
+konsolu** (uygulamanın kalanı açık THY temasında kalır; `design/code.css` yalnız bu ekranı sarar,
+üst bar CODE'da koyu tona geçer). Katmanlar: ① 3D çekirdek küresi ② içgörü akışı ③ karar konsolu
+④ kısa vade (kanal/pencere/ufuk/transfer) ⑤ uzun vade yol haritası.
+- **Karar mekanizması watchlist'ten TAŞINDI.** Tek bileşen `components/KararKarti.tsx`:
+  konsolda düğmeleriyle, `watchlist/ParcaDetay` içinde `saltOkunur` modunda + "CODE konsolunda
+  karar ver" köprüsü. Karar tek yerde verilir; öneri hâlâ `engine/oner.ts`, kuyruk `engine/karar.ts`.
+- **3D küre (`views/code/Kure.tsx`):** her nokta gerçek bir parça (renk = kanal), Fibonacci
+  yerleşimi risk sıralı geldiği için kuzey kutbu = en riskli. Üç ölçülmüş karar: (a) nokta ışını
+  yerine görünmez **seçim yüzeyi** + en yakın parça (5.000 nokta çok sıkışık, eşik geniş olunca
+  yanlış parça, dar olunca hiç seçim); (b) etiketler drei `Html` DEĞİL kendi katmanımız — drei
+  her etiket için tuvali kaplayan sarmalayıcı div açıp tıklamayı yutuyordu (DOM'da doğrulandı);
+  (c) tekerlek yakınlaştırması kapalı, yoksa sayfa kaydırılamıyor. WebGL yoksa `SahneKalkani`
+  hata sınırı devreye girer, sayılar çalışmaya devam eder.
+- **İçgörü akışı (`views/code/icgoru.ts`) — DÜRÜSTLÜK:** cümle kalıpları ve güven yüzdeleri
+  sabittir, içindeki **sayıların hepsi** payload/engine'den canlı gelir. Bu ayrım hem kodda hem
+  ekranda yazılı; "LLM üretti" gibi sunulmuyor. Uzun vade planı da aynı kuralla: anlatı ürün
+  kararı, rakamlar canlı.
+- **Üç sabit dosya:** `code/sahneVeri.ts` (three'ye dokunmaz — sabitler Kure'de kalsaydı statik
+  import three chunk'ını ilk boyamaya bağlıyordu), `code/KararKonsolu.tsx`, `code/UzunVade.tsx`.
+- **Stil sabiti:** `web/.prettierrc.json` eklendi (tek tırnak, 100 sütun) — repo stili buydu,
+  prettier varsayılanı çift tırnağa çeviriyordu.
+
+**Tasarım tokenları — GÜNCEL (web/src/design/tokens.css):** turkishairlines.com'a sadık
+**açık** tema. Marka kırmızısı `#E81932` (kimlik + birincil eylem), koyu yüzey `#16233A`,
+ink `#1A1A1A`, altın `#C6A26B`; yüzeyler `#FFFFFF`/`#F7F8F9`/`#F0F2F4`, çizgi `#E2E5E9`.
+**KURAL:** marka kırmızısı hiçbir veri serisinde/durum rozetinde kullanılmaz — veri kırmızısı
+ayrı ton (`#C1121F`), böylece "marka" ile "alarm" gözle ayrışır. Durum renkleri: teal `#0E6B4A`,
+amber `#8A6000`, mavi `#2C5AA0`, mor `#5B4B8A`. Font: sistem yığını (offline şartı); lisanslı
+THY yazı tipi eklenecekse tek değişken (`--tk-font-display`).
 Sayı stili: UI'da Türkçe ondalık virgül ("%67,5", "$23,3M"); kodda nokta.
+
+> ESKİ (artık geçersiz): koyu tema `#0B1220` + Space Grotesk/Inter/JetBrains Mono. `catalyst.html`
+> Temmuz 2026'da açık teknik gri temaya geçmişti; web uygulaması bunu THY kimliğine taşıdı.
 
 ---
 

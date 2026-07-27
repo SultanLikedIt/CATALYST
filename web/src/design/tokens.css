@@ -1,0 +1,166 @@
+/* =====================================================================
+   Catalyst — tasarım tokenları
+   Marka referansı: turkishairlines.com (açık zemin, geniş beyaz alan, tek
+   güçlü kırmızı vurgu, sakin nötr griler, keskin küçük yarıçaplar).
+
+   KURAL 1 — Marka kırmızısı (--tk-red) yalnız KİMLİK ve BİRİNCİL EYLEM içindir.
+   Hiçbir grafik serisinde, hiçbir durum rozetinde kullanılmaz. Veri kırmızısı
+   ayrı bir tondur (--st-red), böylece "marka" ile "alarm" gözle ayrışır.
+
+   KURAL 2 — Renk anlam taşır, süs değildir. Gradyan yalnız marka şeridi ve
+   3D/hero yüzeylerinde; veri yüzeylerinde düz renk.
+
+   Gerçek THY font dosyası lisanslıdır ve repoya konmaz; --tk-font-* değişkenine
+   tek satırda takılabilir (offline çalışma için sistem yığını varsayılan).
+   ===================================================================== */
+
+:root {
+  /* ---------- marka ---------- */
+  --tk-red: #e81932; /* Turkish Airlines kırmızısı — kimlik + birincil eylem */
+  --tk-red-600: #d4142b;
+  --tk-red-700: #b80f23; /* basılı/hover */
+  --tk-red-050: #fdeef0; /* çok açık zemin (rozet arkası) */
+  --tk-red-100: #f9d5da;
+  --tk-ink: #1a1a1a; /* THY gövde metni */
+  --tk-navy: #16233a; /* koyu yüzey: hero, harita, 3D sahne */
+  --tk-navy-700: #1f3050;
+  --tk-navy-900: #0e1727;
+  --tk-gold: #c6a26b; /* premium/elite vurgusu — nadiren */
+
+  /* ---------- nötrler (yüzey → çizgi → metin) ---------- */
+  --s-0: #ffffff; /* kart */
+  --s-1: #f7f8f9; /* sayfa zemini */
+  --s-2: #f0f2f4; /* ikincil dolgu, tablo başlığı */
+  --s-3: #e7eaed; /* üçüncül dolgu, ilerleme rayı */
+  --ln: #e2e5e9; /* varsayılan çizgi */
+  --ln-soft: #eceff2;
+  --ln-strong: #cbd1d8; /* kart kenarı, girdi kenarı */
+  --ln-ctl: #aeb6c0; /* etkileşimli kontrol kenarı */
+  --tx: #1a1d21; /* birincil metin */
+  --tx-2: #57616f; /* ikincil metin */
+  --tx-3: #79828f; /* üçüncül / etiket */
+  --tx-4: #949ca7; /* soluk, devre dışı */
+  --tx-on-dark: #eef2f7;
+  --tx-on-dark-2: #a8b4c6;
+
+  /* ---------- durum (veri) renkleri ---------- */
+  --st-red: #c1121f; /* kritik / kırmızı liste */
+  --st-red-soft: #fbf1f2;
+  --st-red-line: #e9b9bc;
+  --st-amber: #8a6000; /* uyarı / dikkat */
+  --st-amber-soft: #f5efe2;
+  --st-amber-line: #dfcfa8;
+  --st-teal: #0e6b4a; /* iyi / kazanım */
+  --st-teal-soft: #e7f0ed;
+  --st-teal-line: #b9d3c9;
+  --st-blue: #2c5aa0; /* bilgi / seçim */
+  --st-blue-soft: #eaeef6;
+  --st-blue-line: #c3cfe4;
+  --st-violet: #5b4b8a; /* ikincil kategori */
+  --st-violet-soft: #eeecf5;
+  --st-gray: #6e7783; /* kıyas serisi */
+
+  /* kritiklik sınıfı renkleri (AOG KRİTİK / KRİTİK / KRİTİK DEĞİL) */
+  --kr-0: #c1121f;
+  --kr-1: #b87500;
+  --kr-2: #8a929c;
+
+  /* ---------- tipografi ---------- */
+  /* Lisanslı THY yazı tipi eklenecekse yalnız bu iki satır değişir. */
+  --tk-font-display:
+    'TK Type', 'Turkish Airlines', ui-sans-serif, system-ui, -apple-system, 'Segoe UI',
+    'Helvetica Neue', Arial, sans-serif;
+  --tk-font-sans:
+    ui-sans-serif, system-ui, -apple-system, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+  --tk-font-mono: ui-monospace, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
+
+  --fs-mikro: 0.66rem;
+  --fs-etiket: 0.72rem;
+  --fs-kucuk: 0.79rem;
+  --fs-govde: 0.86rem;
+  --fs-orta: 0.95rem;
+  --fs-baslik: 1.12rem;
+  --fs-h2: 1.45rem;
+  --fs-h1: 2.1rem;
+  --fs-dev: 2.9rem; /* KPI sayısı */
+
+  --tr-sik: -0.02em; /* büyük başlıkta sıkı harf aralığı */
+  --tr-genis: 0.08em; /* mono etiketlerde geniş */
+
+  /* ---------- geometri ---------- */
+  --r-xs: 2px;
+  --r-sm: 4px;
+  --r-md: 8px;
+  --r-lg: 14px;
+  --r-xl: 22px;
+  --r-tam: 999px;
+
+  --u: 4px; /* aralık birimi */
+  --gap: 14px;
+  --gap-lg: 20px;
+  --pad-kart: 16px;
+  --en: 1360px; /* içerik genişliği */
+
+  /* ---------- yükseklik (gölge) ---------- */
+  --sh-0: 0 1px 0 rgba(22, 35, 58, 0.04);
+  --sh-1: 0 1px 2px rgba(22, 35, 58, 0.06), 0 0 0 1px rgba(22, 35, 58, 0.04);
+  --sh-2: 0 4px 14px -4px rgba(22, 35, 58, 0.12), 0 0 0 1px rgba(22, 35, 58, 0.05);
+  --sh-3: 0 14px 38px -10px rgba(22, 35, 58, 0.2), 0 0 0 1px rgba(22, 35, 58, 0.06);
+  --sh-kirmizi: 0 6px 20px -6px rgba(232, 25, 50, 0.4);
+
+  /* ---------- hareket ---------- */
+  /* Tek yerden yönetilir; motion.ts bu değerlerin JS ikizidir. */
+  --hiz-anlik: 90ms;
+  --hiz-hizli: 160ms;
+  --hiz-orta: 260ms;
+  --hiz-yavas: 420ms;
+  --hiz-sahne: 620ms; /* sayfa geçişi */
+  --egri-standart: cubic-bezier(0.22, 0.61, 0.36, 1);
+  --egri-cikis: cubic-bezier(0.4, 0, 1, 1);
+  --egri-giris: cubic-bezier(0, 0, 0.2, 1);
+  --egri-yay: cubic-bezier(0.34, 1.56, 0.64, 1); /* hafif overshoot */
+
+  --z-sahne: 1;
+  --z-yapisik: 30;
+  --z-ustbar: 40;
+  --z-katman: 60;
+  --z-modal: 80;
+  --z-ipucu: 90;
+}
+
+/* Koyu yüzey — hero şeridi, harita/3D sahnesi ve kokpit panelleri bu blokla
+   sarılır. Sayfanın geneli AÇIK kalır (marka sitesi açık zeminlidir). */
+.koyu-yuzey {
+  --s-0: #1b2942;
+  --s-1: #16233a;
+  --s-2: #1f3050;
+  --s-3: #26395c;
+  --ln: #2c4064;
+  --ln-soft: #223354;
+  --ln-strong: #375080;
+  --ln-ctl: #47639a;
+  --tx: #eef2f7;
+  --tx-2: #a8b4c6;
+  --tx-3: #8593a8;
+  --tx-4: #6b7a91;
+  --st-red-soft: #3a1c22;
+  --st-red-line: #6d2a33;
+  --st-amber-soft: #33290f;
+  --st-amber-line: #6a5320;
+  --st-teal-soft: #102f26;
+  --st-teal-line: #235a47;
+  --st-blue-soft: #16294a;
+  --st-blue-line: #2a4879;
+  color: var(--tx);
+  background: var(--s-1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --hiz-anlik: 0ms;
+    --hiz-hizli: 0ms;
+    --hiz-orta: 0ms;
+    --hiz-yavas: 0ms;
+    --hiz-sahne: 0ms;
+  }
+}

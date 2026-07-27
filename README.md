@@ -32,6 +32,38 @@ uv run build_dashboard.py
 | **Senaryo** | Kriz simülatörü: senaryo kütüphanesi (motor ailesi krizi, pandemi, OEM gecikmesi, lojistik…) → 5.000 PN canlı yeniden hesap; **model parametre paneli** (kritiklik ağırlıkları, BER eşiği, alarm tamponu); **belirsizlik denemeleri** (kümülatif olasılık eğrisi, %80/%90/%95 aralık seçici, senaryo sabitleme, beklenen fatura ↔ kötü giden %10'un ortalaması, belirsizliğin kaynağı ayrışımı, altı senaryonun karşılaştırması, formül↔deneme doğrulama tablosu); senaryoya bağlı canlı dayanıklılık dağılımı; duyarlılık; kaynak önceliklendirme; kabiliyet ROI |
 
 
+## Web uygulaması (`web/`) — geliştirilebilir sürüm
+
+`catalyst.html`'in tüm özelliklerini koruyan React + TypeScript sürümü. Tek dosyalık prototip
+sunum için hazır ve **olduğu gibi duruyor**; üstüne geliştirme (3D harita, sahne animasyonları,
+yeni ekranlar) web uygulamasında yapılır.
+
+```bash
+cd web
+npm install
+npm run dev              # geliştirme sunucusu
+npm run build:tek-dosya  # dist-tek-dosya/index.html — offline tek dosya (jüri demosu)
+npm test                 # 34 parite kontrolü: sayılar catalyst.html ile birebir
+```
+
+Tasarım turkishairlines.com'a göre yeniden kurgulandı (THY kırmızısı kimlik ve birincil eylem
+için; veri renkleri ayrı tutuldu ki "marka" ile "alarm" karışmasın). Hesap çekirdeği `core.py`
+formüllerinin TypeScript ikizidir ve `payload.json`'u aynı hattan alır — iki sürüm arasında sayı
+ayrışması imkânsızdır. Ayrıntı: [`web/README.md`](web/README.md).
+
+### CODE — Component Decision Engine (açılış ekranı)
+
+Web sürümünün ilk sekmesi **CODE**: kararın verildiği tek yüzey, koyu operasyon konsolu
+temasında (uygulamanın geri kalanı açık THY temasında kalır).
+
+| Katman | İçerik |
+|---|---|
+| **Çekirdek (3D)** | 5.000 parçanın operasyon küresi — her nokta gerçek bir parça, rengi karar motorunun verdiği kanal, kürenin kuzey kutbu en yüksek riskli parçalar. Küreye tıklamak parçayı karar konsoluna düşürür; yörüngede dokuz kaynak düğümü (AMOS · TRAX · ÜPK · WMS · GÜMRÜK · POOL · OEM · TAHMİN · LLM) çekirdeğe akar |
+| **İçgörü akışı** | 12 bulgu; her biri bir ekrana/kuyruğa köprülü. Cümle kalıpları sabittir, **sayılar canlı** — panelin altında bu ayrım yazıyla belirtilir |
+| **Karar konsolu** | Watchlist'ten taşındı: dört kuyruk (pencere kapalı · AOG kritik · hurda adayı · risk sıralı), önerilen aksiyon kartı (yetmeme riski öncesi/sonrası, açık, kanal), Onayla / Ata / Haritada incele / Satınalma talebi / Yoksay, oturum içi karar kaydı ve aksiyon merdiveni. Parça detayı aynı kartı salt-okunur gösterir → karar tek yerde verilir |
+| **Kısa vade** | Karar yönlendirici (kanal dağılımı), sipariş penceresi alarmı, planlama ufku, transfer önerileri (kaynak → hedef istasyon + harita rotası) |
+| **Uzun vade** | 2033 yol haritası: dört faz, faz kapıları takvim değil metrik; her kartta kazanç, güven ve ilgili ekrana köprü |
+
 ## İç veri gezgini (`data_explorer.py`, PyQt6)
 
 Sunum için değil, ekibin ham veriyi kurcalaması için masaüstü araç. Dört veri seti
@@ -66,18 +98,6 @@ metinleri doldurur (7 sayfa sınırı korunur).
 `deck_data.json` sunum sayılarını `build_dashboard.build_payload()`'dan alır — slaytlar ile
 dashboard aynı kaynaktan beslenir, ayrışamaz. Sunucu akışı: `sunum/SUNUM_KILAVUZU.md`.
 
-## İç araç — veri gezgini (sunum değil)
-
-```bash
-uv run --group gui python data_explorer.py
-```
-
-PyQt6 masaüstü uygulaması: dört veri setini (çekirdek PN tablosu + üç ham CSV) filtreleyip
-histogram, kırılım çubuğu, saçılım, kutu ve çeyreklik seri olarak çizer; tabloyu sıralar,
-özet istatistik verir, satıra çift tıklayınca PN'in çeyreklik kırılımını açar, filtreli
-veriyi CSV'ye aktarır. PyQt6 yalnız `gui` grubundadır, `uv sync` ile kurulan varsayılan
-ortama girmez. Başsız doğrulama: `QT_QPA_PLATFORM=offscreen uv run --group gui python data_explorer.py --selftest`
-
 ## Diğer script'ler
 
 ```bash
@@ -94,7 +114,8 @@ BER, SBA, cold-start…) aranabilir Türkçe açıklamalarını açar — jüri 
 | Dosya | Açıklama |
 |---|---|
 | `core.py` | **Tek doğruluk kaynağı** — tüm formüller (risk, float, TTS/TTR, Poisson min-max, BER, kabiliyet ROI) + parametreler (CLAUDE.md §4.1) |
-| `build_dashboard.py` | core.py → JSON payload → `catalyst.html` |
+| `build_dashboard.py` | core.py → JSON payload → `catalyst.html` **+ `web/src/data/payload.json`** |
+| `web/` | React + TypeScript web uygulaması (aynı payload, aynı formüller, THY tasarım dili) |
 | `assets/app.css`, `assets/app.js` | Dashboard tasarım sistemi ve uygulama katmanı |
 | `vendor/chart.umd.js` | Chart.js 4.4.4 (gömülür — internetsiz çalışma) |
 | `CLAUDE.md` | Proje bağlamı: doğrulanmış tüm sayılar, formüller, vizyon, sunum planı |

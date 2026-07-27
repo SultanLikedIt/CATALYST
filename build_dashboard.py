@@ -510,6 +510,14 @@ if __name__ == '__main__':
     open(OUT, 'w', encoding='utf-8').write(html)
     kb = len(html.encode()) // 1024
     print(f'✓ {os.path.basename(OUT)} yazıldı — {kb:,} KB')
+    # Web uygulaması (web/) aynı payload'ı dosya olarak okur — iki sürüm tek kaynaktan
+    # beslenir, sayı ayrışması imkânsızdır. Klasör yoksa sessizce atlanır.
+    web_data = os.path.join(HERE, 'web', 'src', 'data')
+    if os.path.isdir(os.path.dirname(web_data)):
+        os.makedirs(web_data, exist_ok=True)
+        with open(os.path.join(web_data, 'payload.json'), 'w', encoding='utf-8') as f:
+            json.dump(p, f, ensure_ascii=False, separators=(',', ':'))
+        print(f'✓ web/src/data/payload.json yazıldı')
     print(f"  PN {p['kpi']['pn']:,} · kırmızı {p['kpi']['kirmizi']} "
           f"(siparişsiz {p['kpi']['siparissiz']}) · envanter ${p['kpi']['fmv']}M "
           f"· bant +%{p['band']['alt_pct']:.0f}–{p['band']['ust_pct']:.0f}")
