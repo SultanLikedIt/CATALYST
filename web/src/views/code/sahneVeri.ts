@@ -7,15 +7,19 @@
  * ağırlaşırdı (rollup bunu INEFFECTIVE_DYNAMIC_IMPORT diye uyarıyor).
  */
 
-/** Koyu zeminde okunan sahne paleti — code.css sinyal renkleriyle aynı aile. */
+/**
+ * Sahne paleti — SİYAH · KIRMIZI · BEYAZ (code.css sinyal renkleriyle aynı aile).
+ * Küredeki nokta rengi tek eksende okunur: kırmızı parladıkça acil, nötr
+ * griye indikçe pasif. Hue ile değil açıklıkla ayrışır (bkz. kure/kureStil.ts).
+ */
 export const SC = {
-  alarm: '#ff5666',
-  kirmizi: '#e0a53a',
-  aksiyon: '#4a8fe0',
-  izle: '#2d4a6b',
-  cyan: '#45c8e0',
-  teal: '#33b788',
-  cizgi: '#1e3350',
+  alarm: '#ff2d40', // siparişsiz kırmızı — en acil
+  kirmizi: '#ff9aa2', // tükeniyor — ikinci kademe
+  aksiyon: '#f2f3f5', // aksiyon bekleyen — beyaz
+  izle: '#4e5057', // izlemede — pasif gri
+  aksan: '#e81932', // halka/tel kafes aksanı (marka tonu)
+  notr: '#94969e', // ikincil nötr seri
+  cizgi: '#2a2a31',
 } as const;
 
 /** Dağınık kaynaklar — yörüngedeki düğümler (CLAUDE.md §1.3 saha haritası). */
@@ -33,6 +37,6 @@ export const KAYNAKLAR = [
 
 export const TIP_RENK: Record<string, string> = {
   kayıt: SC.aksiyon,
-  dış: SC.teal,
-  motor: SC.cyan,
+  dış: SC.notr,
+  motor: SC.aksan,
 };

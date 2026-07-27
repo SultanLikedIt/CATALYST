@@ -471,22 +471,21 @@ ML modeli 3 tohumlu topluluk + en-iyi-epoch geri yükleme ile deterministik; Q4 
 - `kontrol-kulesi-vizyon-dokumani.html` — **v4 MASTER**: 3 setin birleşik analizi + vizyon
 
 **Web uygulaması teslimatı (Tem 2026, `web/`):** `catalyst.html`'in TÜM özelliklerini koruyan
-React 19 + TypeScript + Vite sürümü. Amaç: 3D harita, sahne animasyonları ve yeni ekranlar için
-geliştirilebilir taban. Tek dosyalık prototip DOKUNULMADAN duruyor (sunum yedeği).
+React 19 + TypeScript + Vite sürümü. Amaç: 3D sahneler, animasyon ve yeni ekranlar için
+geliştirilebilir taban (CODE küresi ve tam ekran harita küresi burada doğdu). Tek dosyalık prototip
+DOKUNULMADAN duruyor (sunum yedeği; onun haritası hâlâ 2D SVG).
 - **Yığın:** React 19 · TS 7 · Vite 8 · framer-motion (geçişler) · Chart.js + react-chartjs-2
   (25 grafik birebir taşındı) · zustand (ekranlar arası köprüler + senaryo parametreleri) ·
-  three + @react-three/fiber + drei (kurulu, ayrı chunk, 3D için hazır) · vite-plugin-singlefile
-  (offline tek dosya: `npm run build:tek-dosya`).
+  three + @react-three/fiber + drei (ayrı chunk; CODE çekirdek küresi + harita küresi) ·
+  vite-plugin-singlefile (offline tek dosya: `npm run build:tek-dosya`).
 - **Katmanlar:** `src/engine/` saf hesap (core.py formüllerinin TS ikizi, DOM bilmez) ·
   `src/data/` payload.json + tipler · `src/design/` tokenlar · `src/views/` ekranlar.
   Bir sayı iki ekranda görünüyorsa ikisi de aynı engine fonksiyonunu çağırır.
 - **Veri hattı:** `build_dashboard.py` artık `web/src/data/payload.json`'u da yazar; Python
   yoksa `node web/scripts/veri-cikar.mjs` catalyst.html'den birebir aynı JSON'u ayıklar.
-- **Parite:** `cd web && npm test` → 34 kontrol (694/641/217/3.448 · alarm 42 · 134/22 ·
-  motor 477 · OEM 283 · belirsizlik 389 [%80: 371–408] · motor 797). Taşımada sayı kaybı yok.
-- **3D seam'i:** harita üçe bölündü — `views/harita/haritaVeri.ts` (projeksiyon/mesafe/süre/kanal,
-  render'dan bağımsız), `useGorunum.ts` (2D jestler, 3D'de OrbitControls olur), `Harita.tsx`
-  (SVG çizimi + paneller). 3D küre eklenirken yalnız çizim bloğu değişir.
+- **Parite:** `cd web && npm test` → 44 kontrol; 34'ü sayı paritesi (694/641/217/3.448 · alarm 42 ·
+  134/22 · motor 477 · OEM 283 · belirsizlik 389 [%80: 371–408] · motor 797), 10'u küre geometrisi.
+  Taşımada sayı kaybı yok.
 - **Bilinen karar:** sekme geçişi yalnız giriş animasyonu. `AnimatePresence mode="wait"` +
   lazy sekme askıya alınınca çıkış "tamamlandı" saymıyor ve ekran kilitleniyor (ölçüldü).
   Sekme parçaları ilk boyamadan 400 ms sonra prefetch edilir, geçişte yükleme yazısı görünmez.
@@ -516,6 +515,35 @@ konsolu** (uygulamanın kalanı açık THY temasında kalır; `design/code.css` 
 - **Stil sabiti:** `web/.prettierrc.json` eklendi (tek tırnak, 100 sütun) — repo stili buydu,
   prettier varsayılanı çift tırnağa çeviriyordu.
 
+**HARİTA — tam ekran 3D küre (Tem 2026, kullanıcı isteği):** 2D SVG harita (Türkiye konturu +
+azimut görünümü) KALDIRILDI; yerine ekranın tamamını kaplayan "Google Earth tech" havasında
+operasyon küresi geldi (`views/Harita.tsx` = HUD kabuğu, `views/harita/kure/`). `useGorunum.ts`
+silindi (2D jestler → OrbitControls); `haritaVeri.ts` TEK SATIR değişmedi — 3D seam'i işe yaradı,
+süre/kanal/rota sayıları aynı yerden geliyor. Üst bar CODE'da olduğu gibi haritada da koyu tona
+geçer; App'te hero ve varsayım şeridi bu sekmede gizlenir (`design/kure.css` yalnız bu ekranı sarar).
+- **Katmanlar:** `kure/kureGeo.ts` saf matematik (three bilmez; testleri node'da koşar) ·
+  `kure/kureStil.ts` koyu palet + kanal akış hızları · `kure/KureSahne.tsx` R3F sahnesi.
+- **Kıtalar dosyadan değil hesaptan:** hazır earth.jpg yok (offline şartı) — kara noktası matrisi
+  aynı 110m `data/dunya.ts` konturundan, nokta-içinde-poligon testiyle çalışma anında üretilir
+  (20°'lik hücre dizini + bbox ön elemesi). Boylam adımı 1/cos(lat).
+- **Akış = süre:** rota yayları büyük çember; üzerlerinde kuyruklu parçacıklar akar, hız kanal
+  tipine bağlı (`AKIS_HIZ`: havuz hızlı, satın alma en yavaş). Kanal satırına tıklamak kamerayı o
+  yola uçurur (büyük çember üzerinde slerp; kullanıcı sürüklerse uçuş iptal).
+- **Metrik seçici (yeni):** sütun yüksekliği uçak/stok/talep/kırmızı/MIN33/dışa bağımlı + kritiklik
+  süzgeci. Değerler `HA.krTot × istasyon payı` ile dağıtılır — build_dashboard.py'nin kuralı;
+  `haritaVeri.metrikDegerler()`. Tek dosyalık sürümdeki metrik görünümleriyle aynı mantık.
+- **Ölçülen kararlar:** (a) kadraj bütün kanalları değil "hedef + konuşulan kaynak"ı çerçeveler —
+  tek bir JFK havuz seçeneği kamerayı dünyaya çekip AOG istasyonunu kenarda bırakıyordu;
+  (b) işaretler zoom'la büyümez (ölçek × kamera uzaklığı), yoksa yakınlaşınca tek halka ekranı
+  kaplıyor — sütun boyu ise coğrafi veri olduğu için dünya ölçeğinde kalır; (c) yay çizgisinde
+  toplamsal karışım yok (demet beyaza doyup kanal rengini yok ediyordu), ışıma yalnız parçacıkta;
+  (d) genel görünümde parça başına yalnız önerilen yol çizilir, alternatifler parçaya tıklayınca;
+  (e) açılış kadrajı animasyon değil doğrudan kamera konumu (`baslangic`) — sunumda uçuş beklemesi
+  yok; (f) etiketler kendi HTML katmanında (drei `Html` tıklamayı yutuyor) ve çakışanlar önem
+  sırasına göre elenir.
+- **Dayanıklılık:** WebGL yoksa `SahneKalkani` sayıları düz listeyle gösterir; `webglcontextlost`
+  yakalanır (bağlam kaybında sahne sessizce siyah kalıyordu, HTML katmanı çalışmaya devam ediyordu).
+
 **Tasarım tokenları — GÜNCEL (web/src/design/tokens.css):** turkishairlines.com'a sadık
 **açık** tema. Marka kırmızısı `#E81932` (kimlik + birincil eylem), koyu yüzey `#16233A`,
 ink `#1A1A1A`, altın `#C6A26B`; yüzeyler `#FFFFFF`/`#F7F8F9`/`#F0F2F4`, çizgi `#E2E5E9`.
@@ -524,6 +552,22 @@ ayrı ton (`#C1121F`), böylece "marka" ile "alarm" gözle ayrışır. Durum ren
 amber `#8A6000`, mavi `#2C5AA0`, mor `#5B4B8A`. Font: sistem yığını (offline şartı); lisanslı
 THY yazı tipi eklenecekse tek değişken (`--tk-font-display`).
 Sayı stili: UI'da Türkçe ondalık virgül ("%67,5", "$23,3M"); kodda nokta.
+
+**KOYU EKRANLAR — SİYAH · KIRMIZI · BEYAZ (27 Tem 2026, kullanıcı kararı):** CODE ve HARİTA
+sekmelerinde mavi/cyan/teal/mor **yok**; palet turkishairlines.com'un siyah-kırmızı-beyaz
+ayarına indirildi (`design/code.css` `--c-*`, `design/kure.css` `--k-*`, `views/code/sahneVeri.ts`,
+`views/harita/kure/kureStil.ts`). Üç rol: siyah–gri zemin/yapı/pasif seri · beyaz yapı aksanı ve
+"elimizde olan/iyi" · kırmızı rampası aciliyet ve marka eylemi (`#ff9aa2` uyarı → `#ff3b4a` alarm →
+`#e81932` birincil eylem/seçim dolgusu). Ayrım hue ile değil **açıklık basamağıyla** yapılır:
+7 tedarik kanalı beyazdan koyu bordoya tek eksende sıralanır (nötr = kendi kaynağımız, kırmızı =
+dışarıya para/süre), bu yüzden CSS değişkenleri renk adıyla değil ROLLE adlandırıldı
+(`--c-akw/--c-gri/--c-alt/--c-uyari/--c-red/--c-red2`; `--k-aks/--k-marka/--k-red`).
+Sonuç: üstteki "marka kırmızısı veri serisinde kullanılmaz" kuralı **yalnız açık temada**
+geçerlidir; koyu iki ekranda kırmızı zaten tek anlam taşır — "buraya bak".
+- Ölçülen iki düzeltme: (a) atmosfer halesi kırmızıya geçince toplamsal karışımda taşıp küreyi
+  yutuyordu → `scale 1.135→1.075`, fresnel üssü `2.1→3.2`, çarpan `1.15→0.85`; (b) HUD'daki
+  "önerilen" rozeti açık bir kutuya dönüşüyordu — base.css'in açık temalı tek-sınıf `.oner`
+  kartı sızıyor, `.ksat .oner` içinde `background` açıkça sıfırlanmalı.
 
 > ESKİ (artık geçersiz): koyu tema `#0B1220` + Space Grotesk/Inter/JetBrains Mono. `catalyst.html`
 > Temmuz 2026'da açık teknik gri temaya geçmişti; web uygulaması bunu THY kimliğine taşıdı.

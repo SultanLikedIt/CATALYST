@@ -9,7 +9,7 @@ npm install
 npm run dev              # http://localhost:5173
 npm run build            # dist/          — kod bölünmüş statik site
 npm run build:tek-dosya  # dist-tek-dosya/index.html — TEK DOSYA, offline (jüri demosu)
-npm test                 # engine parite testleri (34 kontrol)
+npm test                 # parite + geometri testleri (44 kontrol)
 npm run tip              # tsc --noEmit
 ```
 
@@ -31,12 +31,14 @@ src/
   data/        payload.json (core.py çıktısı) + TS tipleri + dünya konturu
   engine/      HESAP ÇEKİRDEĞİ — saf TS, DOM bilmez
                stats · flags · ladder · karar · oner · senaryo · format
-  design/      tokens.css (THY paleti) · base.css · code.css (konsol) · motion.ts · renkler.ts
+  design/      tokens.css (THY paleti) · base.css · code.css (konsol) · kure.css (harita HUD)
+               motion.ts · renkler.ts
   app/         App (kabuk, sekmeler, geçiş) · store (zustand) · Sözlük
   components/  Grafik (Chart.js sarmalayıcı) · temel (Kart/Kpi/Cip/…) · KararKarti (tek karar mekanizması)
   views/       Code · Watchlist · Ongoru · Harita · Senaryo
                code/{Kure,KararKonsolu,UzunVade,icgoru,sahneVeri}
-               watchlist/ParcaDetay · harita/{haritaVeri,useGorunum} · senaryo/{ParamPanel,Belirsizlik}
+               watchlist/ParcaDetay · senaryo/{ParamPanel,Belirsizlik}
+               harita/haritaVeri · harita/kure/{kureGeo,kureStil,KureSahne}
 ```
 
 ## CODE — açılış ekranı
@@ -82,24 +84,59 @@ node scripts/veri-cikar.mjs
 
 ## Parite
 
-`npm test` — 34 kontrol, hepsi CLAUDE.md §3 ve `smoke_test.js`'ten alınmış sabit değerlere karşı:
-kanal dağılımı 694/641/217/3.448 · sipariş alarmı 42 · kırmızı 134/22 · motor krizi 477 ·
-OEM 283 · belirsizlik 389 (%80: 371–408) · motor krizi 797 · kapalı form ↔ 800 deneme uyumu.
+`npm test` — **44 kontrol**. 34'ü sayı paritesi, hepsi CLAUDE.md §3 ve `smoke_test.js`'ten alınmış
+sabit değerlere karşı: kanal dağılımı 694/641/217/3.448 · sipariş alarmı 42 · kırmızı 134/22 ·
+motor krizi 477 · OEM 283 · belirsizlik 389 (%80: 371–408) · motor krizi 797 · kapalı form ↔ 800
+deneme uyumu.
+
+Kalan 10'u küre geometrisi (`kureGeo.test.ts`): dünyanın ayna görüntüsü olmadığı (Atlantik'ten
+bakınca İstanbul sağda, JFK solda), yayların iki havalimanını gerçekten birleştirdiği ve kara
+ızgarasının karayı karada, denizi denizde bulduğu kilitlenir.
 
 Testler "kod çalışıyor mu" demiyor; **taşımada tek bir sayının kaybolmadığını** kanıtlıyor.
 
-## 3D'ye geçiş için hazırlık
+## HARİTA — tam ekran 3D küre
 
-Harita bilerek üçe bölündü:
+2D SVG harita yerini **ekranın tamamını kaplayan operasyon küresine** bıraktı; paneller kürenin
+üstünde cam HUD olarak durur. Seam işe yaradı: `haritaVeri.ts` (süre/kanal/rota/metrik) tek satır
+değişmeden kaldı, yalnız çizim katmanı değişti. `useGorunum.ts` (2D jestler) silindi, yerini
+`OrbitControls` aldı.
 
-- `views/harita/haritaVeri.ts` — projeksiyon, mesafe, süre, kanal yelpazesi, rota senaryoları.
-  **Render'dan tamamen bağımsız**; 3D küre aynı fonksiyonları çağırır, sayılar ayrışamaz.
-- `views/harita/useGorunum.ts` — 2D kaydırma/yakınlaştırma jestleri. 3D'de yerini `OrbitControls` alır.
-- `views/Harita.tsx` — SVG çizimi + paneller. Yalnız çizim bloğu değişir; detay kartı, istasyon
-  tablosu, rota paneli ve kriz katmanı olduğu gibi kalır.
+| Dosya | İş |
+|---|---|
+| `harita/kure/kureGeo.ts` | Saf matematik: lon/lat → küre, büyük çember yayı + örnekleyici, kara noktası ızgarası, kıyı/meridyen çizgileri, kamera çerçevesi. three.js **bilmez**, testleri node'da koşar |
+| `harita/kure/kureStil.ts` | Koyu zemin paleti — depo/kanal renklerinin anlamı 2D ile birebir, yalnız parlaklık taşındı; akış hızları kanal tipine bağlı |
+| `harita/kure/KureSahne.tsx` | R3F sahnesi: küre, yıldızlar, atmosfer, istasyon sütunları, akan parçacıklı yaylar, kamera uçuşu, etiket katmanı |
+| `design/kure.css` | Tam ekran yerleşim + cam paneller (`.kure` yalnız bu ekranı sarar) |
 
-`three`, `@react-three/fiber`, `@react-three/drei` kurulu ve `vite.config.ts` içinde ayrı chunk'a
-ayrılmış durumda; 3D bileşen `lazy()` ile yüklendiğinde ilk açılış ağırlaşmaz.
+**Kıtalar dosyadan değil, hesaptan.** Hazır `earth.jpg` yok (uygulama internetsiz açılmak
+zorunda): kara noktaları aynı 110m kontur verisinden, çalışma anında nokta-içinde-poligon testiyle
+üretiliyor. Boylam adımı `1/cos(lat)` ile açılır, noktalar kutuplarda sıkışmaz.
+
+**Akış = süre.** Yay üzerindeki parçacıkların hızı kanal tipinden gelir (`AKIS_HIZ`): havuzdan
+değişim akıp giderken satın alma yolu sürünür. "Hangi yol hızlı" sorusu tabloya bakmadan, hareketten
+okunur. Kanal satırına tıklamak kamerayı o yola uçurur — kısa depo transferi Türkiye'ye yaklaşır,
+OEM satın alma Avrupa'ya açılır.
+
+Ölçülen üç karar:
+
+- **Kadraj bütün kanalları birden çerçevelemez.** Denendi: tek bir JFK havuz seçeneği kamerayı
+  dünyaya kadar geri çekiyor ve asıl konu (AOG istasyonu) kenarda kalıyordu. Kural artık "hedef +
+  konuşulan kaynak".
+- **İşaretler zoom'la büyümez** (2D'deki maplibre davranışı korundu): halka/nabız ölçeği kamera
+  uzaklığıyla çarpılır. Aksi hâlde Türkiye'ye yaklaşınca tek halka ekranı kaplıyordu. Sütun boyu
+  ise coğrafi veridir, dünya ölçeğinde kalır.
+- **Yay çizgisinde toplamsal karışım yok.** Yaylar hedefte demet hâlinde birleşiyor ve toplamsal
+  karışım demeti beyaza doyurup kanal rengini yok ediyordu; ışıma yalnız parçacıklarda.
+
+Açılış kadrajı animasyonla değil doğrudan kurulur (`baslangic`): sekmeye geçildiğinde küre ilk
+karede doğru yere bakar, CODE'dan "haritada göster" ile gelindiğinde doğrudan o rotanın kadrajında
+doğar. Etiketler drei `Html` değil kendi katmanımız (bkz. CODE küresi) ve çakışanlar önem sırasına
+göre elenir — Türkiye kümesinde 16 nokta üst üste binmesin.
+
+`three`, `@react-three/fiber`, `@react-three/drei` ayrı chunk'ta ve sahne `lazy()`; ilk açılış
+ağırlaşmaz. WebGL açılmazsa `SahneKalkani` sınırı sayıları düz listeyle gösterir, bağlam kaybında
+sahne kendini geri yükler.
 
 ## Bilinen tasarım kararı
 

@@ -260,11 +260,11 @@ function Cekirdek({ alarmSayisi }: { alarmSayisi: number }) {
       {/* iç çekirdek */}
       <mesh ref={ic}>
         <icosahedronGeometry args={[0.42, 1]} />
-        <meshBasicMaterial color={SC.cyan} wireframe transparent opacity={0.32} />
+        <meshBasicMaterial color={SC.aksan} wireframe transparent opacity={0.32} />
       </mesh>
       <mesh>
         <sphereGeometry args={[0.4, 24, 24]} />
-        <meshBasicMaterial color="#0a1626" transparent opacity={0.92} />
+        <meshBasicMaterial color="#101014" transparent opacity={0.92} />
       </mesh>
       {/* alarm halkası */}
       <mesh ref={halka} rotation={[Math.PI / 2, 0, 0]}>
@@ -299,11 +299,11 @@ function SecimIzi({ poz }: { poz: THREE.Vector3 }) {
     <group ref={ref} position={poz}>
       <mesh>
         <ringGeometry args={[0.055, 0.07, 24]} />
-        <meshBasicMaterial color={SC.cyan} side={THREE.DoubleSide} transparent opacity={0.9} />
+        <meshBasicMaterial color={SC.aksan} side={THREE.DoubleSide} transparent opacity={0.9} />
       </mesh>
       <mesh>
         <sphereGeometry args={[0.022, 10, 10]} />
-        <meshBasicMaterial color={SC.cyan} />
+        <meshBasicMaterial color={SC.aksan} />
       </mesh>
     </group>
   );

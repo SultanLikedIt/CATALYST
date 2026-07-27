@@ -43,7 +43,7 @@ cd web
 npm install
 npm run dev              # geliştirme sunucusu
 npm run build:tek-dosya  # dist-tek-dosya/index.html — offline tek dosya (jüri demosu)
-npm test                 # 34 parite kontrolü: sayılar catalyst.html ile birebir
+npm test                 # 44 kontrol: 34 sayı paritesi (catalyst.html ile birebir) + 10 küre geometrisi
 ```
 
 Tasarım turkishairlines.com'a göre yeniden kurgulandı (THY kırmızısı kimlik ve birincil eylem
@@ -63,6 +63,23 @@ temasında (uygulamanın geri kalanı açık THY temasında kalır).
 | **Karar konsolu** | Watchlist'ten taşındı: dört kuyruk (pencere kapalı · AOG kritik · hurda adayı · risk sıralı), önerilen aksiyon kartı (yetmeme riski öncesi/sonrası, açık, kanal), Onayla / Ata / Haritada incele / Satınalma talebi / Yoksay, oturum içi karar kaydı ve aksiyon merdiveni. Parça detayı aynı kartı salt-okunur gösterir → karar tek yerde verilir |
 | **Kısa vade** | Karar yönlendirici (kanal dağılımı), sipariş penceresi alarmı, planlama ufku, transfer önerileri (kaynak → hedef istasyon + harita rotası) |
 | **Uzun vade** | 2033 yol haritası: dört faz, faz kapıları takvim değil metrik; her kartta kazanç, güven ve ilgili ekrana köprü |
+
+### HARİTA — tam ekran 3D operasyon küresi
+
+Web sürümünde harita sekmesi ekranın tamamını kaplayan bir küredir; paneller kürenin üstünde cam
+HUD olarak durur. Kıtalar hazır doku dosyasından değil, aynı 110m kontur verisinden çalışma anında
+noktalanarak üretilir — sahne internetsiz açılır.
+
+- **Rota akışı:** CODE'daki "🗺 haritada göster" köprüsü aynen çalışır; rota artık büyük çember
+  yaylarında **akan parçacıklarla** çizilir. Parçacık hızı kanal tipinden gelir — havuzdan değişim
+  akıp giderken satın alma yolu sürünür, yani "hangi yol hızlı" hareketten okunur.
+- **Kanal satırına tıkla, küre o yola uçsun:** depo transferi Türkiye'ye yaklaşır, OEM satın alma
+  Avrupa'ya açılır; AOG istasyonunda dönen nişangâh + nabız.
+- **Sütun yüksekliği seçilebilir metrik:** uçak · stok · talep · kırmızı · MIN 2033 · dışa bağımlı,
+  kritiklik süzgeciyle (kritiklik toplamları istasyon payına dağıtılır — `build_dashboard.py`'nin
+  kuralı). 2033 karşılaştırması, tamir akışı ve kriz katmanı (Senaryo sekmesine bağlı) korundu.
+
+Ayrıntı ve ölçülen tasarım kararları: [`web/README.md`](web/README.md).
 
 ## İç veri gezgini (`data_explorer.py`, PyQt6)
 

@@ -1,10 +1,10 @@
 /**
  * Harita veri katmanı — RENDER'DAN BAĞIMSIZ.
  *
- * Buradaki hiçbir şey SVG bilmez: projeksiyon, mesafe, süre tahmini, kanal
- * yelpazesi ve rota senaryoları saf fonksiyonlar. 2D SVG görünümü de, ileride
- * eklenecek 3D küre de aynı fonksiyonları çağırır — iki görünüm arasında sayı
- * farkı doğamaz.
+ * Buradaki hiçbir şey ekran bilmez: mesafe, süre tahmini, metrik dağıtımı, kanal
+ * yelpazesi ve rota senaryoları saf fonksiyonlar. Ekran 2D SVG'den 3D küreye
+ * geçerken bu dosya değişmedi — sayılar aynı yerden geliyor, yalnız çizim değişti.
+ * (Küre geometrisi: kure/kureGeo.ts — o da render'dan bağımsız saf matematik.)
  *
  * TEMSİLÎ UYARISI: istasyon boyutu resmi veride YOK (CLAUDE.md §2.4). Grup
  * toplamları basılı case tablosuyla birebir; istasyon kırılımı ve depo katmanı
@@ -44,42 +44,58 @@ HA.grup.kod.forEach((k, n) => {
   GRUP[k] = { ad: HA.grup.ad[n], u25: HA.grup.u25[n], u33: HA.grup.u33[n] };
 });
 
-/* ---------------------------------------------------------------- projeksiyon */
-/** SVG kullanıcı birimi çerçevesi */
-export const W = 1000;
-export const HG = 560;
-const PAD = 34;
+/* ------------------------------------------------------------------- metrikler */
+/**
+ * Küre üzerindeki sütun yüksekliği hangi sayıyı gösteriyor.
+ *
+ * İstasyon kırılımı veride yok; kritiklik sınıfı toplamları (payload.harita.krTot)
+ * havalimanının filo payıyla dağıtılır — build_dashboard.py'nin kurduğu kuralın
+ * aynısı. Bu yüzden metrik değiştiğinde ülke toplamı korunur, yalnız dağılım
+ * değişir; kritiklik süzgeci de aynı toplamın bir dilimini alır.
+ */
+export type Metrik = 'ucak' | 'adet' | 'talep' | 'kirmizi' | 'min33' | 'dis';
 
-const mY = (lat: number) => Math.log(Math.tan(Math.PI / 4 + (lat * Math.PI) / 360));
-const lo1 = Math.min(...HA.lon) - 4;
-const lo2 = Math.max(...HA.lon) + 4;
-const la1 = Math.min(...HA.lat) - 3;
-const la2 = Math.max(...HA.lat) + 3;
-const sk = Math.min(
-  (W - 2 * PAD) / (lo2 - lo1),
-  ((HG - 2 * PAD) / (mY(la2) - mY(la1))) * (Math.PI / 180),
-);
-const cx = (lo1 + lo2) / 2;
-const cyM = (mY(la1) + mY(la2)) / 2;
-
-/** Web Mercator, istasyon sınırlarına oturtulmuş */
-export const prj = (lon: number, lat: number): [number, number] => [
-  W / 2 + (lon - cx) * sk,
-  HG / 2 - ((mY(lat) - cyM) * sk * 180) / Math.PI,
+export const METRIKLER: { k: Metrik; ad: string; birim: string; ipucu: string }[] = [
+  { k: 'ucak', ad: 'Uçak', birim: 'uçak', ipucu: 'istasyondaki uçak sayısı (case tablosu)' },
+  { k: 'adet', ad: 'Stok', birim: 'adet', ipucu: 'istasyonda duran kullanılabilir adet' },
+  { k: 'talep', ad: 'Talep', birim: 'adet/yıl', ipucu: 'yıllık komponent talebi' },
+  { k: 'kirmizi', ad: 'Kırmızı', birim: 'parça', ipucu: 'dayanma süresi tedarik süresinden kısa' },
+  { k: 'min33', ad: 'MIN 2033', birim: 'adet', ipucu: '2033 servis hedefli asgari stok' },
+  { k: 'dis', ad: 'Dışa bağımlı', birim: 'adet/yıl', ipucu: 'iç tamir kabiliyeti olmayan talep' },
 ];
 
-/** havalimanlarının ekran koordinatları */
-export const PXY: [number, number][] = HA.kod.map((_, i) => prj(HA.lon[i], HA.lat[i]));
+const KR_ALAN: Record<Exclude<Metrik, 'ucak' | 'adet'>, keyof typeof HA.krTot> = {
+  talep: 'talep25',
+  kirmizi: 'kirmizi',
+  min33: 'min33',
+  dis: 'dis_bagimli',
+};
 
-/** iki nokta arasında yay (quadratic bezier) — k eğrilik */
-export function yay(a: number, b: number, k: number): string {
-  const [x1, y1] = PXY[a];
-  const [x2, y2] = PXY[b];
-  const mx = (x1 + x2) / 2 - (y2 - y1) * k;
-  const my = (y1 + y2) / 2 + (x2 - x1) * k;
-  return `M${x1.toFixed(1)},${y1.toFixed(1)} Q${mx.toFixed(1)},${my.toFixed(1)} ${x2.toFixed(
-    1,
-  )},${y2.toFixed(1)}`;
+export interface MetrikSonuc {
+  deger: number[];
+  max: number;
+  toplam: number;
+}
+
+/** kr: null = tüm kritiklik sınıfları, 0/1/2 = AOG / kritik / kritik değil */
+export function metrikDegerler(m: Metrik, kr: number | null, yil33: boolean): MetrikSonuc {
+  const pay = yil33 ? HA.pay33 : HA.pay25;
+  let deger: number[];
+  if (m === 'ucak') {
+    deger = (yil33 ? HA.u33 : HA.u25).slice();
+  } else if (m === 'adet') {
+    // stok kalemi istasyon payına göre dağıtıldı (core.havalimani_tablosu)
+    deger = HA.adet.map((v, i) => (yil33 ? (v * HA.u33[i]) / Math.max(1, HA.u25[i]) : v));
+  } else {
+    const seri = HA.krTot[KR_ALAN[m]];
+    const top = kr == null ? seri.reduce((a, b) => a + b, 0) : seri[kr];
+    deger = pay.map((p) => p * top);
+  }
+  return {
+    deger,
+    max: Math.max(...deger, 1e-9),
+    toplam: deger.reduce((a, b) => a + b, 0),
+  };
 }
 
 /* --------------------------------------------------------------- mesafe / süre */

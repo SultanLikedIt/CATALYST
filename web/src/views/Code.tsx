@@ -40,12 +40,14 @@ class SahneKalkani extends Component<{ children: ReactNode; yedek: ReactNode }, 
   }
 }
 
+/* Siyah–kırmızı–beyaz palette kanallar hue ile değil açıklıkla ayrışır:
+   elimizdeki kaynak beyaz/gri, para çıkışı kırmızının tonlarıdır. */
 const KANAL_RENK: Record<string, string> = {
-  pool: 'var(--c-teal)',
-  tamir: 'var(--c-blue)',
-  alim: 'var(--c-amber)',
-  izle: 'var(--c-tx3)',
-  fazla: 'var(--c-violet)',
+  pool: 'var(--c-iyi)',
+  tamir: 'var(--c-gri)',
+  alim: 'var(--c-uyari)',
+  izle: 'var(--c-alt)',
+  fazla: 'var(--c-red2)',
 };
 
 export default function Code() {
@@ -155,15 +157,15 @@ export default function Code() {
       'p030',
       '0–30 GÜN',
       'acil pencere',
-      'var(--c-amber)',
+      'var(--c-uyari)',
       'sipariş ya da tamir emri bu ay açılmalı',
     ],
-    ['p3090', '30–90 GÜN', 'yaklaşan', 'var(--c-blue)', 'tedarik planına al, bütçeyi ayır'],
+    ['p3090', '30–90 GÜN', 'yaklaşan', 'var(--c-gri)', 'tedarik planına al, bütçeyi ayır'],
     [
       'p90',
       '90+ GÜN',
       'stratejik',
-      'var(--c-teal)',
+      'var(--c-iyi)',
       'min-max bandını izle, atölye yatırımını planla',
     ],
   ];

@@ -5,29 +5,37 @@
    sinyal renkleri. Uygulamanın geri kalanı AÇIK THY temasında kalır;
    bu dosya YALNIZ ilk sayfayı (CODE) sarar.
 
-   KURAL: marka kırmızısı (--tk-red) yalnız CODE kelime işaretinde ve
-   birincil eylemde. Alarm rengi ayrı bir tondur (--c-red).
+   PALET (27 Tem 2026, kullanıcı kararı): SİYAH · KIRMIZI · BEYAZ —
+   turkishairlines.com kimliği. Mavi/cyan/teal/mor YOK. Üç rol:
+     · siyah–gri  → zemin, çerçeve, pasif seri
+     · beyaz      → yapı aksanı ve "aksiyon/iyi" durumu
+     · kırmızı    → aciliyet ve marka eylemi (açık #ff9aa2 uyarı → parlak
+                    #ff3b4a alarm → marka --tk-red birincil eylem)
+   Seriler hue ile değil AÇIKLIK basamağıyla ayrışır; bu yüzden değişkenler
+   artık renk adıyla değil ROLLE adlandırıldı (--c-akw beyaz aksan, --c-gri
+   ikincil nötr, --c-alt üçüncül nötr, --c-uyari açık kırmızı, --c-red alarm).
    ===================================================================== */
 
 .code {
   /* ---- konsol paleti ---- */
-  --c-bg: #0a1220;
-  --c-bg2: #0d1827;
-  --c-panel: #101d2f;
-  --c-panel2: #16283f;
-  --c-line: #1e3350;
-  --c-line2: #2a4a72;
-  --c-line-soft: #17293f;
-  --c-grid: rgba(90, 150, 210, 0.055);
-  --c-tx: #dbe7f5;
-  --c-tx2: #8ea3bd;
-  --c-tx3: #5f7794;
-  --c-cyan: #45c8e0;
-  --c-blue: #4a8fe0;
-  --c-teal: #33b788;
-  --c-amber: #e0a53a;
-  --c-red: #ff5666;
-  --c-violet: #9a86d8;
+  --c-bg: #08080a;
+  --c-bg2: #0e0e11;
+  --c-panel: #141418;
+  --c-panel2: #1c1c22;
+  --c-line: #2a2a31;
+  --c-line2: #45454f;
+  --c-line-soft: #1f1f25;
+  --c-grid: rgba(232, 25, 50, 0.05);
+  --c-tx: #e4e5e9;
+  --c-tx2: #9b9da5;
+  --c-tx3: #6b6d75;
+  --c-akw: #ffffff; /* beyaz aksan: teknik etiket, seçim, vurgu */
+  --c-iyi: #f2f3f5; /* iyi/kazanım — koyu zeminde "temiz" beyaz */
+  --c-gri: #c9cbd1; /* ikincil nötr seri */
+  --c-alt: #7a7c84; /* üçüncül nötr seri */
+  --c-uyari: #ff9aa2; /* uyarı — açık kırmızı */
+  --c-red: #ff3b4a; /* alarm / kritik veri */
+  --c-red2: #b0111f; /* bağlı sermaye / fazla stok — koyu kırmızı */
 
   position: relative;
   margin-left: calc(50% - 50vw);
@@ -82,7 +90,7 @@
   line-height: 0.86;
   font-weight: 700;
   letter-spacing: -0.055em;
-  color: #f2f6fb;
+  color: #f7f8fa;
   margin: 0;
   position: relative;
 }
@@ -105,7 +113,7 @@
   font-size: clamp(0.78rem, 1.5vw, 1.02rem);
   letter-spacing: 0.34em;
   text-transform: uppercase;
-  color: var(--c-cyan);
+  color: var(--c-akw);
 }
 .code-alt {
   margin-top: 12px;
@@ -151,10 +159,10 @@
   font-variant-numeric: tabular-nums;
 }
 .code-durum .v.on {
-  color: var(--c-teal);
+  color: var(--c-iyi);
 }
 .code-durum .v.uy {
-  color: var(--c-amber);
+  color: var(--c-uyari);
 }
 .code-durum .v.al {
   color: var(--c-red);
@@ -166,7 +174,7 @@
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: var(--c-teal);
+  background: var(--c-iyi);
   margin-right: 7px;
   vertical-align: middle;
   animation: nabiz 1.9s ease-in-out infinite;
@@ -189,7 +197,7 @@
 .code-sahne {
   position: relative;
   border: 1px solid var(--c-line);
-  background: radial-gradient(120% 90% at 50% 12%, #14263c 0%, #0a1220 62%, #080f1a 100%);
+  background: radial-gradient(120% 90% at 50% 12%, #1a1216 0%, #0a0a0c 62%, #050506 100%);
   height: 460px;
   overflow: hidden;
 }
@@ -206,7 +214,7 @@
   position: absolute;
   width: 13px;
   height: 13px;
-  border: 1px solid var(--c-cyan);
+  border: 1px solid var(--c-akw);
   opacity: 0.55;
   pointer-events: none;
 }
@@ -298,13 +306,13 @@
 }
 .knode b {
   display: block;
-  color: #cfe0f2;
+  color: #dcdde2;
   font-weight: 600;
 }
 .knode i {
   display: block;
   font-style: normal;
-  color: #5f7794;
+  color: #6b6d75;
   letter-spacing: 0.06em;
   text-transform: lowercase;
   opacity: 0;
@@ -315,7 +323,7 @@
   opacity: 1;
 }
 .knode.on b {
-  color: #45c8e0;
+  color: #ffffff;
 }
 
 /* küre üzerinde imleç altındaki parça */
@@ -324,7 +332,7 @@
   top: 46px;
   right: 16px;
   border: 1px solid var(--c-line);
-  background: rgba(10, 18, 32, 0.94);
+  background: rgba(10, 10, 13, 0.95);
   padding: 8px 11px;
   pointer-events: none;
   font-family: var(--tk-font-mono);
@@ -335,7 +343,7 @@
 }
 .kure-ipucu b {
   display: block;
-  color: var(--c-cyan);
+  color: var(--c-akw);
   font-size: var(--fs-kucuk);
   margin-bottom: 2px;
 }
@@ -350,13 +358,13 @@
   bottom: 46px;
   width: 268px;
   border: 1px solid var(--c-line);
-  background: rgba(10, 18, 32, 0.93);
+  background: rgba(10, 10, 13, 0.94);
   padding: 10px 12px;
   pointer-events: auto;
 }
 .sahne-sec .pn {
   font-family: var(--tk-font-mono);
-  color: var(--c-cyan);
+  color: var(--c-akw);
   font-size: 0.9rem;
 }
 .sahne-sec .mt {
@@ -467,28 +475,28 @@
 }
 .crz.al {
   color: var(--c-red);
-  border-color: #5d2732;
-  background: #24131a;
+  border-color: #5e1a22;
+  background: #1e1013;
 }
 .crz.uy {
-  color: var(--c-amber);
-  border-color: #5a4520;
-  background: #211c11;
+  color: var(--c-uyari);
+  border-color: #5e2e34;
+  background: #1d1214;
 }
 .crz.iy {
-  color: var(--c-teal);
-  border-color: #1f5344;
-  background: #10231e;
+  color: var(--c-iyi);
+  border-color: #3d3f46;
+  background: #17181c;
 }
 .crz.bl {
-  color: var(--c-blue);
-  border-color: #244469;
-  background: #101d2f;
+  color: var(--c-gri);
+  border-color: #33343b;
+  background: #141418;
 }
 .crz.mo {
-  color: var(--c-violet);
-  border-color: #3f3766;
-  background: #171630;
+  color: var(--c-alt);
+  border-color: #2c2d33;
+  background: #141418;
 }
 .crz.no {
   color: var(--c-tx3);
@@ -509,13 +517,13 @@
   transition: all var(--hiz-hizli) var(--egri-standart);
 }
 .ccip:hover {
-  border-color: var(--c-cyan);
-  color: var(--c-cyan);
+  border-color: var(--c-akw);
+  color: var(--c-akw);
 }
 .ccip.on {
-  border-color: var(--c-cyan);
-  color: #08131f;
-  background: var(--c-cyan);
+  border-color: var(--c-akw);
+  color: #0a0a0c;
+  background: var(--c-akw);
 }
 
 /* -------------------------------------------------------- içgörü akışı */
@@ -526,7 +534,7 @@
 }
 .ai-kart {
   border: 1px solid var(--c-line);
-  border-left: 2px solid var(--c-blue);
+  border-left: 2px solid var(--c-gri);
   background: var(--c-bg2);
   padding: 10px 12px;
   cursor: pointer;
@@ -539,20 +547,20 @@
 }
 .ai-kart:hover {
   border-color: var(--c-line2);
-  border-left-color: var(--c-cyan);
+  border-left-color: var(--c-akw);
   transform: translateX(2px);
 }
 .ai-kart.alarm {
   border-left-color: var(--c-red);
 }
 .ai-kart.risk {
-  border-left-color: var(--c-amber);
+  border-left-color: var(--c-uyari);
 }
 .ai-kart.firsat {
-  border-left-color: var(--c-teal);
+  border-left-color: var(--c-iyi);
 }
 .ai-kart.plan {
-  border-left-color: var(--c-violet);
+  border-left-color: var(--c-alt);
 }
 .ai-kart .ust {
   display: flex;
@@ -585,7 +593,7 @@
 .ai-kart .guv .ray i {
   display: block;
   height: 100%;
-  background: var(--c-cyan);
+  background: var(--c-akw);
 }
 .ai-kart h4 {
   font-size: var(--fs-govde);
@@ -605,17 +613,17 @@
   font-size: var(--fs-mikro);
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: var(--c-cyan);
+  color: var(--c-akw);
 }
 
 /* motor log şeridi */
 .ai-log {
   border: 1px solid var(--c-line);
-  background: #08111d;
+  background: #0c0c0f;
   padding: 8px 12px;
   font-family: var(--tk-font-mono);
   font-size: var(--fs-mikro);
-  color: var(--c-teal);
+  color: var(--c-iyi);
   letter-spacing: 0.04em;
   display: flex;
   align-items: center;
@@ -627,7 +635,7 @@
   display: inline-block;
   width: 7px;
   height: 12px;
-  background: var(--c-teal);
+  background: var(--c-iyi);
   animation: imle 1s steps(2) infinite;
 }
 @keyframes imle {
@@ -671,8 +679,8 @@
   background: var(--c-panel2);
 }
 .kq-row.on {
-  background: #16283f;
-  box-shadow: inset 2px 0 0 var(--c-cyan);
+  background: #1c1c22;
+  box-shadow: inset 2px 0 0 var(--c-akw);
 }
 .kq-row .im {
   width: 7px;
@@ -685,7 +693,7 @@
   color: var(--c-tx);
 }
 .kq-row.on .pn {
-  color: var(--c-cyan);
+  color: var(--c-akw);
 }
 .kq-row .mt {
   font-size: var(--fs-mikro);
@@ -708,7 +716,7 @@
   color: var(--c-tx3);
 }
 .kq-row .ok {
-  color: var(--c-teal);
+  color: var(--c-iyi);
 }
 
 .kq-ust {
@@ -739,7 +747,7 @@
 .kdetay .kunye .pn {
   font-family: var(--tk-font-mono);
   font-size: 1.18rem;
-  color: var(--c-cyan);
+  color: var(--c-akw);
 }
 .kdetay .kunye .mt {
   color: var(--c-tx2);
@@ -759,17 +767,17 @@
 }
 .kdetay .kunye .rsk2 b {
   font-size: 1.4rem;
-  color: var(--c-amber);
+  color: var(--c-uyari);
 }
 
 /* koyu zeminde .oner / .ladder / .btn yeniden boyanır */
 .code .oner {
   background: var(--c-bg2);
   border: 1px solid var(--c-line);
-  border-left: 2px solid var(--c-cyan);
+  border-left: 2px solid var(--c-akw);
 }
 .code .oner .l {
-  color: var(--c-cyan);
+  color: var(--c-akw);
 }
 .code .oner .ad {
   color: var(--c-tx);
@@ -779,7 +787,7 @@
 }
 .code .oner .etki > div {
   border-color: var(--c-line);
-  background: #0c1725;
+  background: #121216;
 }
 .code .oner .etki span {
   color: var(--c-tx3);
@@ -800,8 +808,8 @@
   color: var(--c-tx);
 }
 .code .btn:hover {
-  border-color: var(--c-cyan);
-  color: var(--c-cyan);
+  border-color: var(--c-akw);
+  color: var(--c-akw);
 }
 .code .btn.pri {
   background: var(--tk-red);
@@ -814,18 +822,18 @@
 }
 .code .btn.danger {
   color: var(--c-red);
-  border-color: #4a2029;
+  border-color: #5e1a22;
 }
 .code .ladder .step {
-  background: #0c1725;
+  background: #121216;
   border-color: var(--c-line);
 }
 .code .ladder .step:hover {
   border-color: var(--c-line2);
 }
 .code .ladder .step.best {
-  border-color: var(--c-cyan);
-  background: #10202f;
+  border-color: var(--c-akw);
+  background: #1a1216;
 }
 .code .step .no {
   background: var(--c-panel2);
@@ -850,8 +858,8 @@
   color: var(--c-tx2);
 }
 .code .chip:hover {
-  border-color: var(--c-cyan);
-  color: var(--c-cyan);
+  border-color: var(--c-akw);
+  color: var(--c-akw);
 }
 .code .bar-track {
   background: var(--c-line);
@@ -881,7 +889,7 @@
     transform var(--hiz-hizli);
 }
 .kanal-sat:hover {
-  border-color: var(--c-cyan);
+  border-color: var(--c-akw);
   transform: translateX(2px);
 }
 .kanal-sat .ad {
@@ -977,7 +985,7 @@
   transition: border-color var(--hiz-hizli);
 }
 .trf-k:hover {
-  border-color: var(--c-cyan);
+  border-color: var(--c-akw);
 }
 .trf-k .ust {
   display: flex;
@@ -987,7 +995,7 @@
 }
 .trf-k .ust .pn {
   font-family: var(--tk-font-mono);
-  color: var(--c-cyan);
+  color: var(--c-akw);
   font-size: var(--fs-kucuk);
 }
 .trf-k .ust .mt {
@@ -1003,7 +1011,7 @@
   align-items: center;
   gap: 5px;
   border: 1px solid var(--c-line);
-  background: #0c1725;
+  background: #121216;
   padding: 8px;
 }
 .trf-yol .uc {
@@ -1032,11 +1040,11 @@
   white-space: nowrap;
 }
 .trf-yol .uc.hed b {
-  color: var(--c-teal);
+  color: var(--c-iyi);
 }
 .trf-yol .ok {
   text-align: center;
-  color: var(--c-cyan);
+  color: var(--c-akw);
   font-family: var(--tk-font-mono);
 }
 .trf-k .alt {
@@ -1054,7 +1062,7 @@
 .trf-k .alt .dg {
   margin-left: auto;
   font-family: var(--tk-font-mono);
-  color: var(--c-violet);
+  color: var(--c-alt);
 }
 
 /* --------------------------------------------------------- uzun vade */
@@ -1100,7 +1108,7 @@
 .yol-k .dn {
   font-family: var(--tk-font-mono);
   font-size: 1.24rem;
-  color: var(--c-cyan);
+  color: var(--c-akw);
   margin: 3px 0 1px;
 }
 .yol-k h4 {
@@ -1129,7 +1137,7 @@
 .yol-k .kz .v {
   font-family: var(--tk-font-mono);
   font-size: 1.02rem;
-  color: var(--c-teal);
+  color: var(--c-iyi);
 }
 .yol-k .gv {
   margin-top: 9px;
@@ -1148,7 +1156,7 @@
 .yol-k .gv .ray i {
   display: block;
   height: 100%;
-  background: var(--c-violet);
+  background: var(--c-alt);
 }
 .yol-k .kap {
   margin-top: 9px;
@@ -1177,13 +1185,13 @@
   background: var(--c-red);
 }
 .ckpi.uy::after {
-  background: var(--c-amber);
+  background: var(--c-uyari);
 }
 .ckpi.iy::after {
-  background: var(--c-teal);
+  background: var(--c-iyi);
 }
 .ckpi.mo::after {
-  background: var(--c-violet);
+  background: var(--c-alt);
 }
 .ckpi .l {
   font-family: var(--tk-font-mono);
@@ -1204,13 +1212,13 @@
   color: var(--c-red);
 }
 .ckpi.uy .v {
-  color: var(--c-amber);
+  color: var(--c-uyari);
 }
 .ckpi.iy .v {
-  color: var(--c-teal);
+  color: var(--c-iyi);
 }
 .ckpi.mo .v {
-  color: var(--c-violet);
+  color: var(--c-alt);
 }
 .ckpi .d {
   font-size: var(--fs-mikro);
@@ -1239,7 +1247,7 @@
 .kaynak-c i {
   width: 6px;
   height: 6px;
-  background: var(--c-teal);
+  background: var(--c-iyi);
   border-radius: 50%;
 }
 .kaynak-c.pas i {
@@ -1288,7 +1296,7 @@
   border: 1px solid var(--c-line);
 }
 .mini-tab > div {
-  background: #0c1725;
+  background: #121216;
   padding: 7px 9px;
 }
 .mini-tab span {
@@ -1366,32 +1374,32 @@
    İlk sayfa baştan sona konsoldur: marka şeridi de koyu yüzeye geçer.
    Diğer sekmelerde bar açık THY temasında kalır (App.tsx sınıfı kaldırır). */
 .topbar.koyu {
-  background: #08111d;
-  border-bottom-color: #1e3350;
+  background: #0c0c0f;
+  border-bottom-color: #2a2a31;
 }
 .topbar.koyu .brand b,
 .topbar.koyu .brand {
-  color: #eef3f9;
+  color: #f2f3f5;
 }
 .topbar.koyu .synth {
-  background: #16283f;
-  border-color: #1e3350;
-  color: #8ea3bd;
+  background: #1c1c22;
+  border-color: #2a2a31;
+  color: #9b9da5;
 }
 .topbar.koyu .dic-btn {
-  background: #101d2f;
-  border-color: #1e3350;
-  color: #8ea3bd;
+  background: #141418;
+  border-color: #2a2a31;
+  color: #9b9da5;
 }
 .topbar.koyu .dic-btn:hover {
-  border-color: #45c8e0;
-  color: #45c8e0;
+  border-color: #ffffff;
+  color: #ffffff;
 }
 .topbar.koyu .tab {
-  color: #8ea3bd;
+  color: #9b9da5;
 }
 .topbar.koyu .tab:hover {
-  color: #dbe7f5;
+  color: #e4e5e9;
 }
 .topbar.koyu .tab.on {
   color: #ffffff;
@@ -1410,15 +1418,15 @@
   width: 27px;
   height: 27px;
   border: 1px solid var(--c-line);
-  background: rgba(10, 18, 32, 0.9);
+  background: rgba(10, 10, 13, 0.92);
   color: var(--c-tx2);
   font-family: var(--tk-font-mono);
   font-size: 0.9rem;
   line-height: 1;
 }
 .kure-zoom button:hover {
-  border-color: var(--c-cyan);
-  color: var(--c-cyan);
+  border-color: var(--c-akw);
+  color: var(--c-akw);
 }
 
 /* kuyruk satırında orta hücre: PN ile künye alt alta durmalı (yan yana taşıyordu) */

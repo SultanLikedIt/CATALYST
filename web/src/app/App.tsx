@@ -50,9 +50,10 @@ function UstBar() {
   const git = useStore((s) => s.git);
   const bas = useStore((s) => s.sozlugeBas);
 
-  // CODE sekmesinde üst bar da konsol tonuna geçer: ilk sayfa baştan sona CODE'undur.
+  // Koyu ekranlarda (CODE konsolu, tam ekran küre) üst bar da tona uyar.
+  const koyu = sekme === 'karar' || sekme === 'harita';
   return (
-    <nav className={'topbar' + (sekme === 'karar' ? ' koyu' : '')}>
+    <nav className={'topbar' + (koyu ? ' koyu' : '')}>
       <div className="topbar-in">
         <span className="brand">
           <MarkaIsaret />
@@ -116,8 +117,9 @@ export default function App() {
     <>
       <UstBar />
       <div className="wrap">
-        {/* CODE kendi dev başlığını taşır — genel hero yalnız diğer sekmelerde çıkar. */}
-        {sekme !== 'karar' && (
+        {/* CODE kendi dev başlığını, harita ise ekranın tamamını taşır — genel hero
+            yalnız kalan sekmelerde çıkar. */}
+        {sekme !== 'karar' && sekme !== 'harita' && (
           <header className="hero">
             <h1>
               Catalyst · Komponent Envanter <em>Karar Desteği</em>
@@ -140,13 +142,16 @@ export default function App() {
           </Suspense>
         </motion.main>
 
-        <div className="foot">
-          <b>Varsayımlar.</b> Kullanılabilir stok = FAAL + HOMEBASE. Harita temsilî dağıtım,
-          mevsimsellik tek yıla dayanır. Projeksiyon aralıktır: +{pct(B.alt_pct)} ile +
-          {pct(B.ust_pct)} arası. Kritiklik ağırlıkları, BER eşiği {vir(PRM.ber_esigi)} ve servis
-          hedefleri Senaryo sekmesinden ayarlanabilir. Tüm veriler resmi sentetik case setleridir,
-          gerçek THY/AMOS verisi değildir.
-        </div>
+        {/* Harita tam ekran: varsayım şeridi orada kendi HUD'unda duruyor. */}
+        {sekme !== 'harita' && (
+          <div className="foot">
+            <b>Varsayımlar.</b> Kullanılabilir stok = FAAL + HOMEBASE. Harita temsilî dağıtım,
+            mevsimsellik tek yıla dayanır. Projeksiyon aralıktır: +{pct(B.alt_pct)} ile +
+            {pct(B.ust_pct)} arası. Kritiklik ağırlıkları, BER eşiği {vir(PRM.ber_esigi)} ve servis
+            hedefleri Senaryo sekmesinden ayarlanabilir. Tüm veriler resmi sentetik case setleridir,
+            gerçek THY/AMOS verisi değildir.
+          </div>
+        )}
       </div>
       <Sozluk />
     </>

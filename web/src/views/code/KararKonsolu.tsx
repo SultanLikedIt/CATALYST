@@ -116,8 +116,8 @@ export default function KararKonsolu() {
                     background: hasF(j, FL.SIP)
                       ? 'var(--c-red)'
                       : hasF(j, FL.KIRMIZI)
-                        ? 'var(--c-amber)'
-                        : 'var(--c-blue)',
+                        ? 'var(--c-uyari)'
+                        : 'var(--c-gri)',
                   }}
                 />
                 <span style={{ minWidth: 0 }}>
@@ -185,14 +185,14 @@ export default function KararKonsolu() {
                   <i
                     style={{
                       width: Math.min(100, (100 * tts) / mx) + '%',
-                      background: tts < ttr ? 'var(--c-red)' : 'var(--c-teal)',
+                      background: tts < ttr ? 'var(--c-red)' : 'var(--c-iyi)',
                     }}
                   />
                 </div>
                 <b
                   className="mono"
                   style={{
-                    color: tts < ttr ? 'var(--c-red)' : 'var(--c-teal)',
+                    color: tts < ttr ? 'var(--c-red)' : 'var(--c-iyi)',
                   }}
                 >
                   {tts >= 9999 ? '∞' : fmt(tts) + ' g'}
@@ -204,7 +204,7 @@ export default function KararKonsolu() {
                   <i
                     style={{
                       width: Math.min(100, (100 * ttr) / mx) + '%',
-                      background: 'var(--c-blue)',
+                      background: 'var(--c-gri)',
                     }}
                   />
                 </div>
