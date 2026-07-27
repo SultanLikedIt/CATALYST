@@ -1,13 +1,16 @@
 # -*- coding: utf-8 -*-
 """
-Catalyst dashboard üreteci.
+Catalyst payload üreteci.
 
-core.py'den gelen tek çekirdeği alır, tarayıcı için kompakt bir veri paketi
-(payload) üretir ve tek dosyalık, internetsiz çalışan HTML'i yazar.
+core.py'den gelen tek çekirdeği alır, tarayıcı uygulaması (web/) için kompakt bir
+veri paketi (payload) üretir.
 
-    python3 build_dashboard.py
+    uv run build_dashboard.py
 
-Çıktı: catalyst.html  (Chart.js + CSS + JS + veri gömülü)
+Çıktı: web/src/data/payload.json  (tek doğruluk kaynağı core.py; web uygulaması bunu okur)
+
+Not: Eski tek-dosyalık catalyst.html arayüzü Temmuz 2026'da kaldırıldı; yerini
+Vite tabanlı web/ uygulaması aldı. Bu betik artık yalnız payload üretir.
 """
 from __future__ import annotations
 import json, os, sys
@@ -17,7 +20,6 @@ import pandas as pd
 import core
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-OUT = os.path.join(HERE, 'catalyst.html')
 
 
 def r(x, n=1):
@@ -238,7 +240,7 @@ def build_payload():
     q4 = piv.Q4.values.astype(float)
     ma3 = piv[['Q1', 'Q2', 'Q3']].mean(axis=1).values
     sba4 = np.array([core.sba_rate(row.astype(float)) for row in piv[['Q1', 'Q2', 'Q3']].values])
-    ml_path = os.path.join(HERE, 'model_results.json')
+    ml_path = os.path.join(core.VERI_DIR, 'model_results.json')
     ml = json.load(open(ml_path, encoding='utf-8')) if os.path.exists(ml_path) else None
     nn4 = None
     if ml and 'pred_pn' in ml:
@@ -484,40 +486,18 @@ def build_payload():
                 mc=mc, tornado=tornado, opt=opt, backtest=backtest, params=P)
 
 
-def render(payload: dict) -> str:
-    read = lambda p: open(os.path.join(HERE, p), encoding='utf-8').read()
-    chartjs = read('vendor/chart.umd.js')
-    dunya = read('vendor/dunya.js')          # 110m dünya konturu (Natural Earth türevi, ~120 KB)
-    css = read('assets/app.css')
-    js = read('assets/app.js')
-    data = json.dumps(payload, ensure_ascii=False, separators=(',', ':'))
-    return f"""<!DOCTYPE html><html lang="tr"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="color-scheme" content="light">
-<title>Catalyst — Komponent Envanter Karar Desteği</title>
-<style>{css}</style></head>
-<body>
-<script>{chartjs}</script>
-<script>{dunya}</script>
-<script>const DATA={data};</script>
-<script>{js}</script>
-</body></html>"""
-
-
 if __name__ == '__main__':
     p = build_payload()
-    html = render(p)
-    open(OUT, 'w', encoding='utf-8').write(html)
-    kb = len(html.encode()) // 1024
-    print(f'✓ {os.path.basename(OUT)} yazıldı — {kb:,} KB')
-    # Web uygulaması (web/) aynı payload'ı dosya olarak okur — iki sürüm tek kaynaktan
-    # beslenir, sayı ayrışması imkânsızdır. Klasör yoksa sessizce atlanır.
+    # Web uygulaması (web/) payload'ı dosya olarak okur — tek doğruluk kaynağı core.py.
     web_data = os.path.join(HERE, 'web', 'src', 'data')
-    if os.path.isdir(os.path.dirname(web_data)):
-        os.makedirs(web_data, exist_ok=True)
-        with open(os.path.join(web_data, 'payload.json'), 'w', encoding='utf-8') as f:
-            json.dump(p, f, ensure_ascii=False, separators=(',', ':'))
-        print(f'✓ web/src/data/payload.json yazıldı')
+    if not os.path.isdir(os.path.dirname(web_data)):
+        sys.exit('✗ web/src/data bulunamadı — web/ klasörü yerinde mi?')
+    os.makedirs(web_data, exist_ok=True)
+    hedef = os.path.join(web_data, 'payload.json')
+    with open(hedef, 'w', encoding='utf-8') as f:
+        json.dump(p, f, ensure_ascii=False, separators=(',', ':'))
+    kb = os.path.getsize(hedef) // 1024
+    print(f'✓ web/src/data/payload.json yazıldı — {kb:,} KB')
     print(f"  PN {p['kpi']['pn']:,} · kırmızı {p['kpi']['kirmizi']} "
           f"(siparişsiz {p['kpi']['siparissiz']}) · envanter ${p['kpi']['fmv']}M "
           f"· bant +%{p['band']['alt_pct']:.0f}–{p['band']['ust_pct']:.0f}")

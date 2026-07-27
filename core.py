@@ -14,6 +14,8 @@ import numpy as np
 import pandas as pd
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+# Kaynak veri setleri veri/eski/ altında toplandı (Temmuz 2026 yeniden düzenleme).
+VERI_DIR = os.path.join(HERE, 'veri', 'eski')
 
 # ---------------------------------------------------------------- parametreler
 # CLAUDE.md 4.1 — hepsi ayarlanabilir; jüri önünde canlı değiştirilebilir olmalı.
@@ -194,14 +196,14 @@ def poisson_emniyet_stogu(mu: np.ndarray, h: np.ndarray, kesikli_esik: float = 1
 
 
 # --------------------------------------------------------------------- yükleme
-def load(data_dir: str = HERE):
+def load(data_dir: str = VERI_DIR):
     q = pd.read_csv(os.path.join(data_dir, 'dummy_pn_quarterly_data.csv'), encoding='utf-8-sig')
     fleet = pd.read_csv(os.path.join(data_dir, 'fleet_distribution.csv'), encoding='utf-8-sig')
     inv = pd.read_csv(os.path.join(data_dir, 'dummy_pn_inventory_status.csv'), encoding='utf-8-sig')
     return q, fleet, inv
 
 
-def build(data_dir: str = HERE, params: dict = None) -> tuple[pd.DataFrame, pd.DataFrame, dict]:
+def build(data_dir: str = VERI_DIR, params: dict = None) -> tuple[pd.DataFrame, pd.DataFrame, dict]:
     """PN bazında birleşik çekirdek tabloyu üretir. Dönen: (core, fleet, meta)."""
     P = {**PARAMS, **(params or {})}
     q, fleet, inv = load(data_dir)

@@ -5,7 +5,7 @@ Model: MLP (128-64-32) + Poisson loss (sayım verisi için doğru olasılıksal 
 Görev: PN özellikleri + geçmiş çeyrek talepleri -> bir sonraki çeyrek toplam talep.
 Eğitim örnekleri: Q1->Q2, Q1-2->Q3 (train) | Q1-3->Q4 (holdout test — modele hiç gösterilmez)
 Baseline'lar: Naive (son çeyrek), 3-çeyrek ortalama, SBA (Syntetos-Boylan).
-Çalıştırma: uv run train_demand_model.py   (aynı klasörde iki CSV olmalı)
+Çalıştırma: uv run train_demand_model.py   (CSV'ler ve çıktılar veri/eski/ altında)
 """
 import numpy as np, pandas as pd, json, os
 import tensorflow as tf
@@ -16,10 +16,12 @@ np.random.seed(SEED); tf.random.set_seed(SEED)
 tf.keras.utils.set_random_seed(SEED)
 tf.config.experimental.enable_op_determinism()   # koşudan koşuya birebir aynı sonuç
 HERE = os.path.dirname(os.path.abspath(__file__))
+# Kaynak veri ve model çıktıları veri/eski/ altında (Temmuz 2026 yeniden düzenleme).
+VERI_DIR = os.path.join(HERE, 'veri', 'eski')
 
 # ---------------- veri ----------------
-df = pd.read_csv(os.path.join(HERE, 'dummy_pn_quarterly_data.csv'), encoding='utf-8-sig')
-fleet = pd.read_csv(os.path.join(HERE, 'fleet_distribution.csv'), encoding='utf-8-sig')
+df = pd.read_csv(os.path.join(VERI_DIR, 'dummy_pn_quarterly_data.csv'), encoding='utf-8-sig')
+fleet = pd.read_csv(os.path.join(VERI_DIR, 'fleet_distribution.csv'), encoding='utf-8-sig')
 df['TOPLAM'] = df.THY_TALEP_ADET + df.POOL_TALEP_ADET
 piv = df.pivot_table(index='PN', columns='CEYREK', values='TOPLAM').loc[:, ['Q1','Q2','Q3','Q4']]
 
@@ -117,7 +119,7 @@ res = {m: {'mae': round(mae(p), 3), 'rmse': round(rmse(p), 3)}
 print(json.dumps(res, ensure_ascii=False, indent=1))
 
 # ---------------- kayıt ----------------
-net.save(os.path.join(HERE, 'demand_model.keras'))
+net.save(os.path.join(VERI_DIR, 'demand_model.keras'))
 samp = np.random.RandomState(SEED).choice(len(yte), 400, replace=False)
 json.dump({'history': {'epoch': list(range(1, len(h.history['loss']) + 1)),
                        'train': [round(v, 4) for v in h.history['loss']],
@@ -126,5 +128,5 @@ json.dump({'history': {'epoch': list(range(1, len(h.history['loss']) + 1)),
            'scatter': {'y': yte[samp].tolist(), 'p': np.round(pred_nn[samp], 2).tolist()},
            # dashboard'daki tahmin gezgini + hata analizi için: 5.000 PN'in TAMAMININ Q4 tahmini
            'pred_pn': {'pn': piv.index.tolist(), 'pred': np.round(pred_nn, 2).tolist()}},
-          open(os.path.join(HERE, 'model_results.json'), 'w'), ensure_ascii=False)
+          open(os.path.join(VERI_DIR, 'model_results.json'), 'w'), ensure_ascii=False)
 print('model + sonuçlar kaydedildi: demand_model.keras, model_results.json (tam tahmin vektörü dahil)')

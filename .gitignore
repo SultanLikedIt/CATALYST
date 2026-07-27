@@ -13,24 +13,18 @@ __pycache__/
 .vscode/
 *.swp
 
-# NOT: model_results.json ve demand_model.keras BİLEREK repoda —
-# klonlayan, TensorFlow kurmadan dashboard'un AI bölümünü üretebilsin.
+# Node (web/ kendi .gitignore'una da sahip)
+node_modules/
+dist/
+dist-tek-dosya/
 
-# Sunum üretim artıkları — HEPSİ script'lerden yeniden üretilir, repoda tutulmaz.
-# Üretim: make_charts.py → charts/ · make_shots.py → shots/ · fill_sablon.py → .pptx · make_handout.py → .pdf
-sunum/charts/
-sunum/shots/
-sunum/qa_png/
-sunum/*.png
-sunum/*.pdf
-sunum/Grup9_Catalyst.pptx
-sunum/sablon_unpacked/
-# sablon.pptx (resmi şablon) İZLENİR — üretilmez, kaynaktır.
+# NOT: veri/eski/model_results.json ve veri/eski/demand_model.keras BİLEREK repoda —
+# klonlayan, TensorFlow kurmadan öngörü bölümünü üretebilsin.
 
-# Büyük yerel kaynak PDF'leri — repoya alınmaz, diskte durur
+# Büyük yerel kaynak PDF'leri — repoya alınmaz, diskte veri/eski/ altında durur
 # (Grp(910.pdf: basılı case taraması ~42 MB; makale yeniden indirilebilir)
-Grp(910.pdf
-aerospace-13-00110-v2.pdf
+veri/eski/Grp(910.pdf
+veri/eski/aerospace-13-00110-v2.pdf
 
 # TensorFlow / Keras geçicileri
 *.keras.tmp

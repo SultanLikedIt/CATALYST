@@ -3,7 +3,7 @@
 
 Sunum için DEĞİL, ekibin elindeki veriyi hızlıca kurcalaması için masaüstü araç.
 Dört veri seti: core.build() türetilmiş PN tablosu + üç ham CSV. Filtrele, grafikle,
-sırala, tekil PN'e in. Sayılar catalyst.html ile aynı çekirdekten (core.py) gelir.
+sırala, tekil PN'e in. Sayılar web uygulamasıyla aynı çekirdekten (core.py) gelir.
 
 Çalıştırma:
     uv run --group gui python data_explorer.py

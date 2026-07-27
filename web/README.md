@@ -1,8 +1,8 @@
 # Catalyst — web uygulaması
 
-`catalyst.html`'in (tek dosyalık prototip) tüm özelliklerini koruyan React + TypeScript sürümü.
-Amaç: sunuma hazır, geliştirilebilir bir taban — 3D harita, sahne animasyonları ve yeni
-ekranlar buraya eklenir.
+Catalyst'in canlı ürünü: React + TypeScript + Vite uygulaması. (Eski tek-dosyalık `catalyst.html`
+prototipi Temmuz 2026'da kaldırıldı; bu uygulama onun yerini aldı.) Sunuma hazır, geliştirilebilir
+taban — 3D harita, sahne animasyonları ve yeni ekranlar buraya eklenir.
 
 ```bash
 npm install
@@ -22,7 +22,7 @@ npm run tip              # tsc --noEmit
 | **Chart.js + react-chartjs-2** | 25 grafiğin yapılandırması tek dosyalık sürümden birebir taşınabildi — görsel davranış taşımada değişmedi |
 | **zustand** | Ekranlar arası köprüler (Karar Merkezi → Watchlist → Harita) ve senaryo parametreleri tek mağazada; prop zinciri yok |
 | **three + R3F + drei** | Kurulu ve ayrı chunk'ta bekliyor: harita 3D'ye geçtiğinde `views/harita/` altındaki render katmanı değişir |
-| **vite-plugin-singlefile** | `catalyst.html`'in "internet gerektirmez, çift tıkla açılır" garantisi korunuyor |
+| **vite-plugin-singlefile** | "internet gerektirmez, çift tıkla açılır" offline demo garantisi (`npm run build:tek-dosya`) |
 
 ## Mimari
 
@@ -75,17 +75,16 @@ engine fonksiyonunu çağırır — "iki ekran çelişemez" garantisi kodun şek
 Tek doğruluk kaynağı hâlâ `core.py`. Web uygulaması hesaplanmış sayı üretmez, `payload.json` okur:
 
 ```bash
-# Python ortamı varsa (kanonik yol) — catalyst.html + payload.json birlikte üretilir
+# core.py → web/src/data/payload.json (kaynak veri veri/eski/ altındaki üç CSV)
 cd .. && uv run build_dashboard.py
-
-# Python yoksa: mevcut catalyst.html'den birebir aynı JSON ayıklanır
-node scripts/veri-cikar.mjs
 ```
+
+`payload.json` depoda commit'lidir; yalnız CSV ya da formül değişirse yeniden üretmek gerekir.
 
 ## Parite
 
-`npm test` — **44 kontrol**. 34'ü sayı paritesi, hepsi CLAUDE.md §3 ve `smoke_test.js`'ten alınmış
-sabit değerlere karşı: kanal dağılımı 694/641/217/3.448 · sipariş alarmı 42 · kırmızı 134/22 ·
+`npm test` — **44 kontrol**. 34'ü sayı paritesi, hepsi `core.py`'den doğrulanmış sabit
+değerlere karşı: kanal dağılımı 694/641/217/3.448 · sipariş alarmı 42 · kırmızı 134/22 ·
 motor krizi 477 · OEM 283 · belirsizlik 389 (%80: 371–408) · motor krizi 797 · kapalı form ↔ 800
 deneme uyumu.
 
