@@ -17,7 +17,14 @@ import {
   PARAM_BAZ,
   BAZ_CFG,
   ttsDagilim,
+  marjDagilim,
+  bandCarpani,
+  ttrSok,
+  leadSok,
+  MARJ_KIRMIZI,
 } from './senaryo';
+import { PROFILLER, siddet, olcek, ayN, krizTakvim } from './kriz';
+import { tahsis, duyarlilik, acikMaliyeti } from './tahsis';
 import { poisCdf, poissonMin, eksikMoment, invNorm } from './stats';
 import { kanalSec, ladderOps } from './ladder';
 import { FL, hasF, DURUM } from './flags';
@@ -123,6 +130,245 @@ describe('senaryo motoru — kriz = parametre şoku', () => {
   it('dayanıklılık dağılımı tüm aktif parçaları kapsar', () => {
     const t = ttsDagilim(BAZ_CFG).reduce((a, b) => a + b, 0);
     expect(t).toBe(K.aktif_pn);
+  });
+});
+
+/* =====================================================================
+   YENİ ŞOK EKSENLERİ
+
+   Sözleşme: nötr ayar eski davranışı BİREBİR verir. Bu bloğun tamamı bu
+   cümleyi ve her eksenin "neyi vurup neyi vurmadığını" kilitliyor — bir
+   eksen yanlış kanala bağlanırsa 134 hâlâ çıkar ama kriz anlatısı çöker.
+   ===================================================================== */
+describe('şok eksenleri — hangi eksen neyi vurur', () => {
+  const ic = PN.ato.findIndex((v) => v === 1);
+  const dis = PN.ato.findIndex((v) => v === 0);
+
+  it('BAZ_CFG bütün yeni eksenlerde nötr, süreler hiç değişmez', () => {
+    expect(BAZ_CFG.icKap).toBe(0);
+    expect(BAZ_CFG.gumruk).toBe(0);
+    expect(BAZ_CFG.havuz).toBe(0);
+    expect(BAZ_CFG.kur).toBe(0);
+    expect(BAZ_CFG.filoUc).toBe(0);
+    for (let i = 0; i < NPN; i += 419) {
+      expect(ttrSok(i, BAZ_CFG)).toBe(PN.ttr[i]);
+      expect(leadSok(i, BAZ_CFG)).toBe(PN.lead[i]);
+    }
+  });
+
+  it('gümrük kuyruğu TOPLAMSAL ve yalnız dış kanala biner', () => {
+    const c = { ...BAZ_CFG, gumruk: 45 };
+    expect(ttrSok(dis, c)).toBeCloseTo(PN.ttr[dis] + 45, 9);
+    expect(leadSok(dis, c)).toBeCloseTo(PN.lead[dis] + 45, 9);
+    // iç tamirli parçada gün sayısı HİÇ değişmez
+    expect(ttrSok(ic, c)).toBe(PN.ttr[ic]);
+    // toplamsal olduğu için kısa TAT'lı parçayı yüzdece daha sert vurur
+    const kisa = PN.ato.findIndex((v, i) => v === 0 && PN.ttr[i] > 0 && PN.ttr[i] < 30);
+    const uzun = PN.ato.findIndex((v, i) => v === 0 && PN.ttr[i] > 120);
+    if (kisa > -1 && uzun > -1)
+      expect(ttrSok(kisa, c) / PN.ttr[kisa]).toBeGreaterThan(ttrSok(uzun, c) / PN.ttr[uzun]);
+  });
+
+  it('iç kapasite kaybı yalnız atölyesi olan parçayı çarpar', () => {
+    const c = { ...BAZ_CFG, icKap: 100 };
+    expect(ttrSok(ic, c)).toBeCloseTo(PN.ttr[ic] * 2, 9);
+    expect(ttrSok(dis, c)).toBe(PN.ttr[dis]);
+    expect(senaryoHesap(c).kir).toBeGreaterThan(senaryoHesap(BAZ_CFG).kir);
+  });
+
+  it('disOnly açıkken TAT şoku iç kanalı atlar', () => {
+    const c = { ...BAZ_CFG, l: 50, disOnly: true };
+    expect(ttrSok(ic, c)).toBe(PN.ttr[ic]);
+    expect(ttrSok(dis, c)).toBeCloseTo(PN.ttr[dis] * 1.5, 9);
+  });
+
+  it('filoUc = 0 tam olarak 1,0 verir, uçlar 2033 açığını monoton büyütür', () => {
+    expect(bandCarpani(BAZ_CFG)).toBe(1);
+    expect(bandCarpani({ ...BAZ_CFG, filoUc: -1 })).toBeLessThan(1);
+    expect(bandCarpani({ ...BAZ_CFG, filoUc: 1 })).toBeGreaterThan(1);
+    const alt = senaryoHesap({ ...BAZ_CFG, filoUc: -1 }).acik;
+    const orta = senaryoHesap(BAZ_CFG).acik;
+    const ust = senaryoHesap({ ...BAZ_CFG, filoUc: 1 }).acik;
+    expect(alt).toBeLessThanOrEqual(orta);
+    expect(orta).toBeLessThanOrEqual(ust);
+    // filo ucu bir kriz şoku değil, 2033 varsayımı: bugünün kırmızı listesine dokunmaz
+    expect(senaryoHesap({ ...BAZ_CFG, filoUc: 1 }).kir).toBe(senaryoHesap(BAZ_CFG).kir);
+  });
+
+  it('havuz kaybı ADETLERİ değiştirmez, yalnız faturayı büyütür', () => {
+    const baz = senaryoHesap(BAZ_CFG);
+    const h = senaryoHesap({ ...BAZ_CFG, havuz: 70 });
+    expect(h.kir).toBe(baz.kir);
+    expect(h.acik).toBe(baz.acik);
+    expect(h.ek).toBeCloseTo(baz.ek, 6);
+    expect(baz.poolEk).toBe(0);
+    expect(h.poolEk).toBeGreaterThan(0);
+    expect(h.poolKayipPn).toBeGreaterThan(0);
+  });
+
+  it('kur şoku adetlere dokunmaz, $ kalemleri ölçekler, BER eşiğini kaydırır', () => {
+    const baz = senaryoHesap(BAZ_CFG);
+    const k = senaryoHesap({ ...BAZ_CFG, kur: 40 });
+    expect(k.kir).toBe(baz.kir);
+    expect(k.acik).toBe(baz.acik);
+    expect(k.kap / baz.kap).toBeCloseTo(1.4, 6);
+    expect(k.ek / baz.ek).toBeCloseTo(1.4, 6);
+    // nakit koruma modu: eşik yukarı kayar → BER adayı azalır, parçalar tamire döner
+    expect(k.berEtkin).toBeGreaterThan(baz.berEtkin);
+    expect(k.berPn).toBeLessThan(baz.berPn);
+    expect(baz.berPn).toBe(K.ber_pn);
+  });
+
+  it('byKat toplamı kırmızıya eşit, marjın ilk 4 kovası kırmızı listenin kendisi', () => {
+    [BAZ_CFG, PRESETS.motor, PRESETS.pandemi, PRESETS.bilesik].forEach((c) => {
+      const r = senaryoHesap(c);
+      expect(r.byKat.length).toBe(26);
+      expect(r.byKat.reduce((a, b) => a + b, 0)).toBe(r.kir);
+      const m = marjDagilim(c);
+      expect(m.slice(0, MARJ_KIRMIZI).reduce((a, b) => a + b, 0)).toBe(r.kir);
+    });
+  });
+
+  it('marj dağılımı TAT şokunu görür, dayanma süresi dağılımı (tanım gereği) görmez', () => {
+    const c = { ...BAZ_CFG, l: 60, disOnly: true };
+    expect(ttsDagilim(c)).toEqual(ttsDagilim(BAZ_CFG));
+    expect(marjDagilim(c)).not.toEqual(marjDagilim(BAZ_CFG));
+    expect(senaryoHesap(c).kir).toBeGreaterThan(senaryoHesap(BAZ_CFG).kir);
+  });
+
+  it('11 preset var; hepsi bazdan farklı ve bazdan kötü ya da eşit', () => {
+    const ks = Object.keys(PRESETS);
+    expect(ks.length).toBe(11);
+    const baz = senaryoHesap(BAZ_CFG);
+    const imza = (r: ReturnType<typeof senaryoHesap>) =>
+      [r.kir, Math.round(r.ek), Math.round(r.poolEk), r.berPn].join('|');
+    ks.filter((k) => k !== 'baz').forEach((k) => {
+      const r = senaryoHesap(PRESETS[k]);
+      expect(r.kir).toBeGreaterThanOrEqual(baz.kir);
+      expect(imza(r)).not.toBe(imza(baz));
+    });
+  });
+
+  it('alarm tamponu artık senaryo motorunu da etkiler (tek doğruluk kaynağı)', () => {
+    const a = senaryoHesap(BAZ_CFG, PARAM_BAZ).kir;
+    const b = senaryoHesap(BAZ_CFG, { ...PARAM_BAZ, tampon: 14 }).kir;
+    expect(b).toBeGreaterThan(a);
+    expect(b).toBe(paramHesap({ ...PARAM_BAZ, tampon: 14 }).kir);
+  });
+});
+
+/* =====================================================================
+   KRİZ TAKVİMİ
+   ===================================================================== */
+describe('kriz takvimi — şok zamana yayılır', () => {
+  it('şiddet eğrisi: 0. ay kriz öncesi, plato tam şiddet, toparlanma sonu sıfır', () => {
+    const p = PROFILLER.kademeli;
+    expect(siddet(p, 0)).toBe(0);
+    expect(siddet(p, p.tirmanma)).toBe(1);
+    for (let a = p.tirmanma; a <= p.tirmanma + p.plato; a++) expect(siddet(p, a)).toBe(1);
+    expect(siddet(p, ayN(p) - 1)).toBe(0);
+    // tırmanma monoton
+    for (let a = 1; a <= p.tirmanma; a++) expect(siddet(p, a)).toBeGreaterThan(siddet(p, a - 1));
+  });
+
+  it("ölçekte çarpanlar 1'den başlar, yapısal varsayımlar ölçeklenmez", () => {
+    const c = olcek(PRESETS.bilesik, 0);
+    expect(c.d).toBe(0);
+    expect(c.l).toBe(0);
+    expect(c.icKap).toBe(0);
+    expect(c.gumruk).toBe(0);
+    expect(c.havuz).toBe(0);
+    expect(c.kur).toBe(0);
+    // ÇARPANLAR: w = 0'da 1 olmalı, 0 DEĞİL — yoksa talep sıfırlanır
+    expect(c.yeniDem).toBe(1);
+    expect(olcek(PRESETS.oem, 0).kuculDem).toBe(1);
+    // etkisiz çarpan etkisiz kalır
+    expect(olcek(PRESETS.lojistik, 0.5).yeniDem).toBe(0);
+    // yapısal varsayımlar aynen geçer
+    expect(c.disOnly).toBe(PRESETS.bilesik.disOnly);
+    expect(c.filoUc).toBe(PRESETS.bilesik.filoUc);
+  });
+
+  it('0. ay baz durumu birebir verir', () => {
+    const tk = krizTakvim(PRESETS.motor, PROFILLER.kademeli);
+    expect(tk.bazKir).toBe(134);
+    expect(tk.aylar[0].r.kir).toBe(senaryoHesap(BAZ_CFG).kir);
+    expect(tk.aylar.length).toBe(ayN(PROFILLER.kademeli));
+  });
+
+  it('zirve takvim aralığında ve tam şiddet ayına düşer', () => {
+    const p = PROFILLER.kademeli;
+    const tk = krizTakvim(PRESETS.motor, p);
+    expect(tk.zirveKir).toBe(senaryoHesap(PRESETS.motor).kir);
+    expect(tk.duvarAy).toBeGreaterThanOrEqual(p.tirmanma);
+    expect(tk.duvarAy).toBeLessThanOrEqual(p.tirmanma + p.plato);
+    expect(tk.zirveKir).toBeGreaterThan(tk.bazKir);
+  });
+
+  it('baz senaryoda takvim düz: zirve = baz, alarm rayı sessiz', () => {
+    const tk = krizTakvim(BAZ_CFG, PROFILLER.surukleyen);
+    expect(tk.zirveKir).toBe(tk.bazKir);
+    expect(tk.kirmiziAy).toBe(tk.bazKir * tk.aylar.length);
+    tk.aylar.forEach((a) => expect(a.r.kir).toBe(tk.bazKir));
+  });
+
+  it('uzun sürükleyen profil, ani darbeden daha çok parça·ay yakar', () => {
+    const ani = krizTakvim(PRESETS.pandemi, PROFILLER.ani);
+    const uzun = krizTakvim(PRESETS.pandemi, PROFILLER.surukleyen);
+    const fazla = (t: ReturnType<typeof krizTakvim>) => t.kirmiziAy - t.bazKir * t.aylar.length;
+    expect(fazla(uzun)).toBeGreaterThan(fazla(ani));
+    expect(uzun.zirveKir).toBe(ani.zirveKir); // aynı şok, aynı zirve — fark SÜREDE
+  });
+});
+
+/* =====================================================================
+   TAHSİS + DUYARLILIK
+   ===================================================================== */
+describe('kaynak tahsisi — kısıtlı bütçe nereye kadar gider', () => {
+  const t = tahsis(BAZ_CFG, PARAM_BAZ);
+
+  it("kümülatif eğri monoton artar ve kazanım %100'e yakınsar", () => {
+    for (let i = 1; i < t.butce.length; i++) {
+      expect(t.butce[i]).toBeGreaterThanOrEqual(t.butce[i - 1]);
+      expect(t.kazanc[i]).toBeGreaterThanOrEqual(t.kazanc[i - 1]);
+      expect(t.kapanan[i]).toBeGreaterThanOrEqual(t.kapanan[i - 1]);
+    }
+    expect(t.kazanc[t.kazanc.length - 1]).toBeCloseTo(100, 6);
+    // Chart.js'e 10.000 nokta verilmez
+    expect(t.butce.length).toBeLessThanOrEqual(92);
+    expect(t.toplamAdim).toBeGreaterThan(t.butce.length);
+  });
+
+  it("kazanımın %80'i toplam bütçenin küçük bir kısmıyla doluyor", () => {
+    expect(t.butce80).toBeGreaterThan(0);
+    expect(t.butce80).toBeLessThan(t.toplamButce * 0.75);
+  });
+
+  it('ilk 10 tekil parça, hepsinin açığı ve maliyeti pozitif', () => {
+    expect(t.ilk10.length).toBe(10);
+    expect(new Set(t.ilk10.map((o) => o.pn)).size).toBe(10);
+    t.ilk10.forEach((o) => {
+      expect(o.adet).toBeGreaterThan(0);
+      expect(o.maliyet).toBeGreaterThan(0);
+      expect(o.stokout).toBeGreaterThanOrEqual(0);
+      expect(o.stokout).toBeLessThanOrEqual(100);
+    });
+  });
+
+  it('kriz derinleşince gereken bütçe büyür', () => {
+    const kriz = tahsis(PRESETS.motor, PARAM_BAZ);
+    expect(kriz.toplamButce).toBeGreaterThan(t.toplamButce);
+    expect(kriz.toplamAdim).toBeGreaterThan(t.toplamAdim);
+  });
+
+  it('tornado 6 etken üretir ve her etkenin üst ucu daha pahalıdır', () => {
+    const d = duyarlilik(BAZ_CFG, acikMaliyeti(PARAM_BAZ));
+    expect(d.satir.length).toBe(6);
+    expect(d.baz).toBeGreaterThan(0);
+    d.satir.forEach((s) => expect(s.yuksek).toBeGreaterThan(s.dusuk));
+    // seçili senaryonun ETRAFINDA: kriz derinleşince tablo da kayar
+    const kriz = duyarlilik(PRESETS.bilesik, acikMaliyeti(PARAM_BAZ));
+    expect(kriz.baz).toBeGreaterThan(d.baz);
   });
 });
 

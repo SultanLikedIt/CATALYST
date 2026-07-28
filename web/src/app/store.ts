@@ -91,6 +91,10 @@ interface Durum {
 
   senaryo: SenaryoCfg & { preset: string };
   params: ParamCfg;
+  /** kriz.ts PROFILLER anahtarı — şokun zamana yayılma biçimi */
+  profil: string;
+  /** takvimde incelenen ay, 0 = kriz öncesi */
+  ay: number;
 
   git: (s: Sekme) => void;
   sozlugeBas: (a?: boolean) => void;
@@ -118,6 +122,8 @@ interface Durum {
   senaryoDegis: (y: Partial<SenaryoCfg & { preset: string }>) => void;
   paramDegis: (y: Partial<ParamCfg>) => void;
   paramSifirla: () => void;
+  profilSec: (k: string) => void;
+  aySec: (n: number) => void;
 }
 
 const sira = (s: Sekme) => SEKMELER.findIndex((x) => x.k === s);
@@ -138,6 +144,8 @@ export const useStore = create<Durum>((set, get) => ({
 
   senaryo: { ...BAZ_CFG, preset: 'baz' },
   params: { ...PARAM_BAZ },
+  profil: 'kademeli',
+  ay: 0,
 
   git: (s) => {
     const o = get().sekme;
@@ -214,4 +222,9 @@ export const useStore = create<Durum>((set, get) => ({
   senaryoDegis: (y) => set((st) => ({ senaryo: { ...st.senaryo, ...y } })),
   paramDegis: (y) => set((st) => ({ params: { ...st.params, ...y } })),
   paramSifirla: () => set({ params: { ...PARAM_BAZ } }),
+
+  /* Profil değişince ay SIFIRLANIR: ani darbe 10 ay, uzun sürükleyen 27 ay —
+     eski ay yeni takvimin dışında kalabiliyor. */
+  profilSec: (k) => set({ profil: k, ay: 0 }),
+  aySec: (n) => set({ ay: Math.max(0, n) }),
 }));

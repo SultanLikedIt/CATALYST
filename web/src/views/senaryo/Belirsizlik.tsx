@@ -20,6 +20,8 @@ import { CC as C, tint } from '@/design/renkler';
 import { Kart, Izgara, Cip } from '@/components/temel';
 import Grafik from '@/components/Grafik';
 
+/* 11 preset'in tamamı burada renkli olmalı: eksik kalan bir anahtar Chart.js'e
+   undefined gider ve eğri soluk gri çizilir (bileşik krizde görüldü). */
 const SEN_RENK: Record<string, string> = {
   baz: C.iyi,
   motor: C.kritik,
@@ -27,6 +29,11 @@ const SEN_RENK: Record<string, string> = {
   lojistik: C.mor,
   patlama: C.bilgi,
   oem: C.gri,
+  gumruk: C.altin,
+  atolye: C.navy,
+  havuzCekilme: '#17845F',
+  kur: '#8A6000',
+  bilesik: C.kritik,
   ozel: C.text,
 };
 
@@ -267,7 +274,7 @@ export default function Belirsizlik({
       <Izgara tip="g21" stil={{ marginTop: 12 }}>
         <Kart
           baslik="Senaryoların karşılaştırması"
-          ipucu="Altı senaryonun tamamı aynı anda hesaplanır. Çubuk seçili aralığı, dikey işaret orta değeri gösterir. Bir senaryoya tıklayınca ayarlar ona geçer."
+          ipucu="On bir senaryonun tamamı aynı anda hesaplanır. Çubuk seçili aralığı, dikey işaret orta değeri gösterir. Bir senaryoya tıklayınca ayarlar ona geçer."
         >
           <Grafik cfg={kars.cfg} h={215} onSec={(i) => onPreset(kars.ks[i])} />
         </Kart>

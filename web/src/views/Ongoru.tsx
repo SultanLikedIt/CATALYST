@@ -14,6 +14,7 @@ import { CC as C, S, isiRenk } from '@/design/renkler';
 import { useStore } from '@/app/store';
 import { Bolum, Kart, Izgara, Vurgu, Cip, Yigin } from '@/components/temel';
 import Grafik from '@/components/Grafik';
+import ParamPanel from './ongoru/ParamPanel';
 
 /** SBA (Syntetos-Boylan) — core.py'deki sba_rate ile aynı; gezginde kıyas için. */
 function sbaJS(x: number[]): number {
@@ -554,6 +555,15 @@ export default function Ongoru() {
           çalıştırın.
         </Vurgu>
       )}
+
+      {/* Model burada KALİBRE edilir; Senaryo sekmesinde kriz SİMÜLE edilir.
+          Parametreler mağazada ortak: buradaki alarm tamponu senaryo motorunu da
+          besler, iki ekran aynı kırmızı sayısını üretir. */}
+      <Bolum
+        baslik="Model parametreleri: sayılar sizin elinizde"
+        aciklama='"Ağırlık neden 3?" sorusunun cevabı bir savunma değil bir kaydırıcı: değiştirin, 5.000 parça anında yeniden hesaplansın ve liste jürinin gözü önünde yeniden sıralansın. Buradaki alarm tamponu ve BER eşiği Senaryo sekmesindeki kriz motorunu da doğrudan etkiler.'
+      />
+      <ParamPanel />
     </>
   );
 }

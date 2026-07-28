@@ -2,6 +2,11 @@
  * Canlı parametre paneli — CLAUDE.md §4.1'in "jüri önünde değiştirilebilir olmalı"
  * şartı. Ağırlıklar / BER eşiği / alarm tamponu oynayınca 5.000 parça yeniden
  * hesaplanır ve en riskli 10'un sıralaması gözle görülür biçimde kayar.
+ *
+ * NEDEN SENARYO'DA DEĞİL ÖNGÖRÜ'DE: Senaryo sekmesinde kriz SİMÜLE edilir,
+ * burada model KALİBRE edilir — ikisi farklı iş. Parametreler mağazada ortak
+ * kaldığı için iki ekran aynı kırmızı sayısını üretmeye devam eder; alarm
+ * tamponu senaryo motorunu da doğrudan besler (tek doğruluk kaynağı).
  */
 import { useMemo } from 'react';
 import { PN, LK, K } from '@/data/payload';
