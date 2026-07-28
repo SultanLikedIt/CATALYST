@@ -89,17 +89,6 @@
   font-style: normal;
   color: var(--tk-red);
 }
-.code-marka .sur {
-  font-family: var(--tk-font-mono);
-  font-size: var(--fs-mikro);
-  letter-spacing: 0.18em;
-  color: var(--tx-3);
-  border: 1px solid var(--ln);
-  border-radius: var(--r-tam);
-  background: var(--s-0);
-  padding: 4px 10px;
-  white-space: nowrap;
-}
 .code-acilim {
   margin-top: 12px;
   font-family: var(--tk-font-sans);

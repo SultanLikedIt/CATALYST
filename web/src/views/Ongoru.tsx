@@ -10,7 +10,7 @@ import { useMemo, useState } from 'react';
 import type { ChartConfiguration } from 'chart.js';
 import { D, K, PN, LK, PIDX, PRM } from '@/data/payload';
 import { fmt, f1, mM, pct, vir, foldTr } from '@/engine/format';
-import { CC as C, tint, lerpColor } from '@/design/renkler';
+import { CC as C, S, isiRenk } from '@/design/renkler';
 import { useStore } from '@/app/store';
 import { Bolum, Kart, Izgara, Vurgu, Cip, Yigin } from '@/components/temel';
 import Grafik from '@/components/Grafik';
@@ -48,7 +48,7 @@ export default function Ongoru() {
             type: 'bar',
             label: 'THY talep',
             data: c.thy,
-            backgroundColor: tint(C.bilgi, 0.72),
+            backgroundColor: S.s2,
             stack: 't',
             borderRadius: 3,
           },
@@ -56,16 +56,17 @@ export default function Ongoru() {
             type: 'bar',
             label: 'Pool talep',
             data: c.pool,
-            backgroundColor: tint(C.iyi, 0.62),
+            backgroundColor: S.s4,
             stack: 't',
             borderRadius: 3,
           },
           {
+            /* Tek kırmızı çizgi: hurda kayıptır, sayfadaki tek "alarm" serisi. */
             type: 'line',
             label: 'Scrap',
             data: c.scrap,
-            borderColor: C.red,
-            backgroundColor: C.red,
+            borderColor: S.alarm,
+            backgroundColor: S.alarm,
             yAxisID: 'y1',
             tension: 0.3,
             pointRadius: 3,
@@ -94,18 +95,21 @@ export default function Ongoru() {
       data: {
         labels: si.map((i) => kt.ad[i]),
         datasets: [
+          /* Aynı ölçünün iki yılı → tek hue, iki koyuluk. Farklı renk vermek
+             "iki ayrı şey" der; oysa soru sadece "ne kadar arttı?".
+             Sekme genelindeki kural: bugün açık, 2033 koyu. */
           {
             label: '2025 ($M/yıl)',
             data: si.map((i) => kt.sbutce[i]),
-            backgroundColor: tint(C.uyari, 0.74),
+            backgroundColor: S.s5,
+            borderColor: S.s4,
+            borderWidth: 1,
             borderRadius: 3,
           },
           {
             label: '2033 tahmini ($M/yıl)',
             data: si.map((i) => kt.sbutce33[i]),
-            backgroundColor: tint(C.uyari, 0.3),
-            borderColor: C.amber,
-            borderWidth: 1,
+            backgroundColor: S.s2,
             borderRadius: 3,
           },
         ],
@@ -134,21 +138,26 @@ export default function Ongoru() {
         labels: bt.ad,
         datasets: [
           {
+            /* Üç aday nötr, kazanan yeşil: grafiğin tek cümlesi o çubuk. */
             label: 'Toplam düzeyde hata (%)',
             data: bt.toplam_hata,
-            backgroundColor: bt.toplam_hata.map((_, i) =>
-              i === 3 ? tint(C.iyi, 0.8) : tint(C.gri, 0.48),
-            ),
+            backgroundColor: bt.toplam_hata.map((_, i) => (i === 3 ? S.yesil : S.s4)),
             borderRadius: 4,
           },
           {
+            /* Sağ eksendeki MAE bir çekince, ana mesaj değil — gri ve içi boş
+               noktalarla geri planda durur. (Eskiden haki bir çizgiydi ve
+               kazanan çubuktan daha çok göze çarpıyordu.) */
             label: 'PN düzeyinde MAE (adet)',
             yAxisID: 'y1',
             type: 'line',
             data: bt.mae,
-            borderColor: C.amber,
-            backgroundColor: C.amber,
-            pointRadius: 4,
+            borderColor: S.notrKoyu,
+            backgroundColor: '#FFFFFF',
+            borderWidth: 1.6,
+            pointRadius: 3.4,
+            pointBorderWidth: 1.6,
+            pointBorderColor: S.notrKoyu,
           },
         ],
       },
@@ -190,11 +199,13 @@ export default function Ongoru() {
       data: {
         labels: m.ad,
         datasets: [
+          /* Bugün açık, gelecek koyu. 2033 çubuğu eskiden kırmızıydı: bir
+             projeksiyon alarm gibi okunuyordu, oysa burada kötü bir haber yok. */
           {
             label: '2025 gerçekleşen',
             data: m.t25,
-            backgroundColor: tint(C.bilgi, 0.62),
-            borderColor: C.bilgi,
+            backgroundColor: S.s5,
+            borderColor: S.s4,
             borderWidth: 1,
             borderSkipped: false,
             borderRadius: 2,
@@ -202,8 +213,8 @@ export default function Ongoru() {
           {
             label: '2033 tahmin',
             data: m.t33,
-            backgroundColor: tint(C.kritik, 0.62),
-            borderColor: C.kritik,
+            backgroundColor: S.s2,
+            borderColor: S.s1,
             borderWidth: 1,
             borderSkipped: false,
             borderRadius: 2,
@@ -258,24 +269,26 @@ export default function Ongoru() {
       data: {
         labels: ['2025', '2033 (model-bazlı)'],
         datasets: [
+          /* Sıralı bir hikâye: büyüyen → sabit → küçülen. Renk de o sırada
+             sönüyor, böylece yığının nereye kaydığı okunuyor. */
           {
             label: 'Yeni nesil (5 model)',
             data: g.y,
-            backgroundColor: C.teal,
+            backgroundColor: S.yesil,
             stack: 's',
             borderRadius: 3,
           },
           {
             label: 'Diğer',
             data: g.o,
-            backgroundColor: tint(C.bilgi, 0.42),
+            backgroundColor: S.s4,
             stack: 's',
             borderRadius: 3,
           },
           {
             label: 'Küçülen 4 klasik',
             data: g.k,
-            backgroundColor: tint(C.gri, 0.42),
+            backgroundColor: S.notr,
             stack: 's',
             borderRadius: 3,
           },
@@ -294,6 +307,11 @@ export default function Ongoru() {
   const katCfg = useMemo<ChartConfiguration>(() => {
     const kat = D.kat;
     const ki = kat.ad.map((_, i) => i).sort((a, b) => kat.buyume[b] - kat.buyume[a]);
+    /* Eskiden eşiğe göre kırmızı/sarı/mavi üç kova vardı: %79 ile %81 arasında
+       renk atlıyordu, üstelik hızlı büyüyen kategori "alarm" gibi duruyordu.
+       Şimdi koyuluk doğrudan büyüme oranını izliyor — sıralama sürekli. */
+    const bmin = Math.min(...kat.buyume);
+    const bmax = Math.max(...kat.buyume);
     return {
       type: 'bar',
       data: {
@@ -303,7 +321,7 @@ export default function Ongoru() {
             label: '2033 talep büyümesi %',
             data: ki.map((i) => kat.buyume[i]),
             backgroundColor: ki.map((i) =>
-              kat.buyume[i] >= 80 ? C.red : kat.buyume[i] >= 65 ? C.amber : tint(C.bilgi, 0.62),
+              isiRenk(0.18 + 0.82 * ((kat.buyume[i] - bmin) / (bmax - bmin || 1))),
             ),
             borderRadius: 3,
           },
@@ -341,7 +359,7 @@ export default function Ongoru() {
             type: 'bar',
             label: 'THY talebi',
             data: tq,
-            backgroundColor: tint(C.bilgi, 0.72),
+            backgroundColor: S.s3,
             stack: 'q',
             borderRadius: 3,
           },
@@ -349,16 +367,18 @@ export default function Ongoru() {
             type: 'bar',
             label: 'Pool talebi',
             data: pq,
-            backgroundColor: tint(C.iyi, 0.55),
+            backgroundColor: S.s5,
             stack: 'q',
             borderRadius: 3,
           },
+          /* Üç tahminci üç ayrı şey söylüyor: burada renk gerçekten ayırt
+             ediyor, o yüzden rampanın dışına çıkıyoruz. */
           {
             type: 'line',
             label: 'Sinir ağı (Q4 tahmini)',
             data: [null, null, null, nn],
-            borderColor: C.violet,
-            backgroundColor: C.violet,
+            borderColor: C.mor,
+            backgroundColor: C.mor,
             pointRadius: 7,
             pointStyle: 'rectRot',
           },
@@ -366,8 +386,8 @@ export default function Ongoru() {
             type: 'line',
             label: 'SBA (Q4 tahmini)',
             data: [null, null, null, sba],
-            borderColor: C.teal,
-            backgroundColor: C.teal,
+            borderColor: S.yesil,
+            backgroundColor: S.yesil,
             pointRadius: 7,
             pointStyle: 'triangle',
           },
@@ -375,8 +395,8 @@ export default function Ongoru() {
             type: 'line',
             label: '3Ç ortalaması',
             data: [null, null, null, ma],
-            borderColor: C.dim,
-            backgroundColor: C.dim,
+            borderColor: S.notrKoyu,
+            backgroundColor: S.notrKoyu,
             pointRadius: 6,
           },
         ],
@@ -398,81 +418,27 @@ export default function Ongoru() {
     if (PIDX[id] != null) setGez(PIDX[id]);
   };
 
-  const ax = D.abcxyz;
-  const pmax = Math.max(...ax.pay.flat(), 1);
-  const ABC_ALT = ["talebin ilk %80'i", '%80–95', 'kalan %5'];
-
   return (
     <>
-      <Bolum baslik="Talep yapısı" />
+      {/* Kaldırılan iki kart: "Talep ne kadar kesikli?" (grafiği yoktu, komşu
+          kartın boyuna gerilip yarısı boş duruyordu) ve "ABC ve XYZ matrisi".
+          Segmentasyon başlığı da matrisle birlikte gitti — tek konusu oydu.
+          Hurda bütçesi, komşusu zaten "talep ve hurda" olduğu için bir üstteki
+          bölüme çıktı; geriye kalan iki blok ise yöntemin doğrulanması. */}
+      <Bolum baslik="Talep ve hurda: bugünkü tablo" />
       <Izgara tip="g21">
         <Kart
           baslik="2025 çeyreklik talep ve hurda"
           ipucu={
             <>
               Yaz çeyreği diğerlerinin {pct(K.q3_pct)} üstünde, etki kritiklik sınıflarında homojen.
-              Yıl içi artış düşük: {pct(K.q1q4_pct)}.
+              Yıl içi artış düşük: {pct(K.q1q4_pct)}. Medyan talep{' '}
+              <b>{fmt(K.medyan_talep)} adet/yıl</b>, parça-çeyreklerin {pct(K.sifir_ceyrek)}'ı
+              sıfır.
             </>
           }
         >
-          <Grafik cfg={ceyCfg} h={270} />
-        </Kart>
-        <Kart
-          baslik="Talep ne kadar kesikli?"
-          ipucu={
-            <>
-              Medyan talep <b>{fmt(K.medyan_talep)} adet/yıl</b> · parça-çeyreklerin{' '}
-              {pct(K.sifir_ceyrek)}'ı sıfır · {fmt(K.kesikli)} parçanın en az bir çeyreği boş. Bu
-              profilde kesikli talep yöntemleri kullanılır, servis hedefi kritikliğe göre değişir.
-            </>
-          }
-        />
-      </Izgara>
-
-      <Bolum baslik="Segmentasyon: hangi parçaya hangi yöntem?" />
-      <Izgara tip="g21">
-        <Kart
-          baslik="ABC ve XYZ matrisi"
-          ipucu="Parçaları iki eksende sınıflıyoruz. Satırlar hacme göre, en çok talep gören A'dan az talep gören C'ye. Sütunlar düzenliliğe göre, istikrarlı X'ten öngörülemez Z'ye. Her hücrede kaç parça olduğu ve talep payı yazıyor."
-        >
-          <div style={{ overflow: 'auto' }}>
-            <table className="heat">
-              <tbody>
-                <tr>
-                  <th>Hacim ↓ / Düzenlilik →</th>
-                  {ax.xyz.map((x, j) => (
-                    <th key={x} title={ax.yontem[j]}>
-                      {x}
-                    </th>
-                  ))}
-                </tr>
-                {ax.abc.map((a, i) => (
-                  <tr key={a}>
-                    <td className="lbl">
-                      {a}
-                      <small>{ABC_ALT[i]}</small>
-                    </td>
-                    {ax.xyz.map((x, j) => (
-                      <td
-                        key={x}
-                        style={{ background: lerpColor(ax.pay[i][j] / pmax) }}
-                        title={`${a}${x}: ${fmt(ax.sayi[i][j])} parça, talep payı %${f1(
-                          ax.pay[i][j],
-                        )}. ${ax.yontem[j]}`}
-                      >
-                        {fmt(ax.sayi[i][j])}
-                        <br />
-                        <small style={{ fontWeight: 400, opacity: 0.8 }}>%{f1(ax.pay[i][j])}</small>
-                      </td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <div className="hint" style={{ marginTop: 9 }}>
-            Sütun başına yöntem atanır: istikrarlıda klasik, düzensizde kesikli talep yöntemleri.
-          </div>
+          <Grafik cfg={ceyCfg} h={280} />
         </Kart>
 
         <Kart
@@ -485,7 +451,7 @@ export default function Ongoru() {
             </>
           }
         >
-          <Grafik cfg={scrapCfg} h={210} />
+          <Grafik cfg={scrapCfg} h={230} />
           <div className="callout red" style={{ margin: '11px 0 0', padding: '12px 15px' }}>
             <span className="tag">Hurda Anomali Dedektörü</span>
             <p style={{ fontSize: '.82rem' }}>
@@ -500,6 +466,7 @@ export default function Ongoru() {
         </Kart>
       </Izgara>
 
+      <Bolum baslik="Yöntem doğrulaması: tahmin tutuyor mu?" />
       <Izgara tip="g21">
         <Kart
           baslik="Geriye dönük test: yaz çeyreğini önceden tahmin edebilir miydik?"
@@ -532,18 +499,20 @@ export default function Ongoru() {
         </Kart>
       </Yigin>
 
-      <Izgara tip="g2">
+      {/* g12: kategori grafiğinin uzun ATA adları için geniş kolon gerekiyor. */}
+      <Izgara tip="g12">
         <Kart
           baslik="Talep nasıl yer değiştiriyor?"
           ipucu="Yeni nesil modellerin payı %34'ten %65'e çıkıyor, küçülen 4 klasik model ise %43'ten %16'ya iniyor. Geçmişi olmayan parça tahmini bu yüzden ana senaryo."
         >
-          <Grafik cfg={gocCfg} h={250} />
+          <Grafik cfg={gocCfg} h={430} />
         </Kart>
         <Kart
           baslik="Kategoriler ayrışıyor"
           ipucu="Bir kategori %40 büyürken bir diğeri %91 büyüyor. Bu yüzden tek bir katsayıyla plan yapmak yanlış olur."
         >
-          <Grafik cfg={katCfg} h={250} />
+          {/* 26 kategori 250px'e sığmıyordu, ATA adları üst üste biniyordu. */}
+          <Grafik cfg={katCfg} h={430} />
         </Kart>
       </Izgara>
 

@@ -156,7 +156,9 @@ export default function ParcaDetay({ i }: { i: number }) {
         borderColor: 'rgba(0,0,0,0)',
         pointRadius: 0,
         fill: '+1',
-        backgroundColor: tint(C.uyari, 0.2),
+        /* Bant, sınırladığı serinin rengini taşır. Eskiden sarıydı: grafikte
+           karşılığı olmayan üçüncü bir renk gibi duruyordu. */
+        backgroundColor: 'rgba(23,132,95,.13)',
       },
       {
         type: 'line',

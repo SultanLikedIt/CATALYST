@@ -39,6 +39,35 @@ export const CC = {
   violet: C.mor,
 };
 
+/**
+ * Grafik DOLGU paleti — C'den ayrı, çünkü iki farklı iş yapıyorlar.
+ *
+ * C metin için kurulu: açık zeminde okunması gerektiğinden tonlar koyu. Aynı
+ * tonlar bir çubuğun tamamını boyayınca ekran ağırlaşıyor, C.uyari gibi koyu
+ * sarılar da haki/hardal görünüyordu. Dolgular ayrı bir rampadan gelir.
+ *
+ * KURAL — "ne kadar?" sorusunu yanıtlayan her seri tek hue ailesinden (çelik
+ * mavisi, THY lacivertinin açılmış hâli) beslenir; koyuluk büyüklüğü kodlar.
+ * Renk yalnız ANLAM taşıdığında değişir: yeşil = tutan/büyüyen, kırmızı =
+ * alarm, gri = referans. Böylece grafik gökkuşağına dönmüyor ve tek bir renkli
+ * çubuk gördüğümüzde bunun bir şey söylediğini biliyoruz.
+ */
+export const S = {
+  s1: '#14314E',
+  s2: '#235682',
+  s3: '#4580B4',
+  s4: '#85AACD',
+  s5: '#C0D4E6',
+  s6: '#E4ECF4',
+
+  yesil: '#17845F',
+  yesilAcik: '#B7DCCC',
+  notr: '#C7CDD4',
+  notrKoyu: '#95A0AD',
+  alarm: '#C1121F',
+  alarmAcik: '#EFC4C8',
+} as const;
+
 /** kritiklik sınıfı renkleri: AOG KRİTİK / KRİTİK / KRİTİK DEĞİL */
 export const KR_RENK = ['#C1121F', '#B87500', '#8A929C'] as const;
 
@@ -55,18 +84,31 @@ export function tint(hex: string, k: number): string {
   return `rgb(${m(r)},${m(g)},${m(b)})`;
 }
 
-/** 0..1 → açık zemin → uyarı → kritik rampası (ısı haritası) */
-export function lerpColor(t: number): string {
+/**
+ * 0..1 → tek hue ısı rampası (açık çelik → koyu lacivert).
+ *
+ * Eskisi gri → bej → kırmızı geçiyordu: bej ara ton çamurlanıyordu ve en yoğun
+ * hücre "alarm" gibi okunuyordu — oysa orada yalnızca "en çok talep buradan
+ * geliyor" yazıyor. Tek hue'da sıralama gözle anında kuruluyor, kırmızı da
+ * gerçekten alarm demek istediğimiz yerlere kalıyor.
+ */
+export function isiRenk(t: number): string {
   const stops = [
-    [240, 242, 244],
-    [226, 199, 150],
-    [193, 18, 31],
+    [240, 244, 249],
+    [133, 170, 205],
+    [20, 49, 78],
   ];
-  const seg = t < 0.5 ? 0 : 1;
-  const u = (t - seg * 0.5) / 0.5;
+  const u = Math.max(0, Math.min(1, t));
+  const seg = u < 0.5 ? 0 : 1;
+  const v = (u - seg * 0.5) / 0.5;
   const a = stops[seg];
   const b = stops[seg + 1];
-  return `rgb(${Math.round(a[0] + (b[0] - a[0]) * u)},${Math.round(
-    a[1] + (b[1] - a[1]) * u,
-  )},${Math.round(a[2] + (b[2] - a[2]) * u)})`;
+  return `rgb(${Math.round(a[0] + (b[0] - a[0]) * v)},${Math.round(
+    a[1] + (b[1] - a[1]) * v,
+  )},${Math.round(a[2] + (b[2] - a[2]) * v)})`;
+}
+
+/** Isı hücresinin yazı rengi — koyu tonda mürekkep okunmaz, beyaza döner. */
+export function isiMetin(t: number): string | undefined {
+  return t > 0.52 ? '#FFFFFF' : undefined;
 }

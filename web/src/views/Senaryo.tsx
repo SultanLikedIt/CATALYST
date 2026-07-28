@@ -18,7 +18,7 @@ import {
   type SenaryoCfg,
 } from '@/engine/senaryo';
 import { fmt, f1, mM, mUsd, vir } from '@/engine/format';
-import { CC as C, tint } from '@/design/renkler';
+import { CC as C, S, tint } from '@/design/renkler';
 import { useStore } from '@/app/store';
 import { Bolum, Kart, Izgara, Kaydirici, Cip, Yigin } from '@/components/temel';
 import Grafik from '@/components/Grafik';
@@ -156,8 +156,8 @@ export default function Senaryo() {
           {
             label: 'aralık ($M)',
             data: td.etiket.map((_, i) => [td.dusuk[i], td.yuksek[i]]),
-            backgroundColor: tint(C.uyari, 0.42),
-            borderColor: C.amber,
+            backgroundColor: S.s4,
+            borderColor: S.s2,
             borderWidth: 1.2,
             borderRadius: 3,
             barPercentage: 0.6,

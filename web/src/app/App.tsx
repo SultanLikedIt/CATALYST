@@ -59,7 +59,9 @@ function UstBar() {
           <MarkaIsaret />
           <b>CATALYST</b> · 2033
         </span>
-        <span className="synth">SENTETİK / TEMSİLİ VERİ</span>
+        {/* "SENTETİK / TEMSİLİ VERİ" rozeti kaldırıldı: aynı uyarı sayfa altındaki
+            varsayım şeridinde zaten tam cümleyle duruyor, üst barda ikinci kez
+            durunca nav kalabalıklaşıyordu. */}
         <button className="dic-btn" onClick={() => bas()} title="Kısaltmalar sözlüğü">
           📖 SÖZLÜK
         </button>

@@ -183,7 +183,6 @@ export default function Code() {
             >
               C<i>O</i>DE
             </motion.h1>
-            <span className="sur">v4.3 · CATALYST</span>
           </div>
           <motion.div
             className="code-acilim"

@@ -1,7 +1,7 @@
 /* =====================================================================
    Catalyst — temel stil katmanı
    Sınıf sözlüğü catalyst.html ile BİLEREK aynı tutuldu (.card, .kpi, .krow,
-   .alarmi, .ufuk, .trf, .ladder, .oner, .chip, .bg-*, .heat, .dic …) — böylece
+   .alarmi, .ufuk, .trf, .ladder, .oner, .chip, .bg-*, .dic …) — böylece
    görünüm THY kimliğine geçerken işaretleme birebir taşınabiliyor ve iki
    sürüm arasında davranış farkı doğmuyor.
    ===================================================================== */
@@ -193,16 +193,6 @@ canvas {
   height: 22px;
   flex: none;
   color: var(--tk-red);
-}
-.synth {
-  font-family: var(--tk-font-mono);
-  font-size: var(--fs-mikro);
-  color: var(--tx-3);
-  border: 1px solid var(--ln);
-  border-radius: var(--r-tam);
-  padding: 3px 10px;
-  white-space: nowrap;
-  background: var(--s-2);
 }
 .tabs {
   display: flex;
@@ -1094,53 +1084,6 @@ input[type='range'] {
   .alarmi .bg {
     display: none;
   }
-}
-
-/* ---------- ısı haritası ---------- */
-.heat {
-  border-collapse: separate;
-  border-spacing: 3px;
-  font-size: var(--fs-etiket);
-  width: 100%;
-}
-.heat th {
-  background: none;
-  position: static;
-  padding: 5px 7px;
-  font-size: var(--fs-etiket);
-  color: var(--tx-3);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  border: none;
-  cursor: default;
-}
-.heat th:hover {
-  color: var(--tx-3);
-}
-.heat td {
-  border: none;
-  padding: 9px 7px;
-  text-align: center;
-  border-radius: var(--r-sm);
-  font-family: var(--tk-font-mono);
-  font-weight: 600;
-  color: var(--tx);
-  white-space: nowrap;
-  font-size: var(--fs-kucuk);
-  transition: transform var(--hiz-hizli) var(--egri-standart);
-}
-.heat td.lbl {
-  text-align: left;
-  background: var(--s-2);
-  color: var(--tx-2);
-  font-family: var(--tk-font-sans);
-  font-weight: 500;
-}
-.heat td.lbl small {
-  display: block;
-  color: var(--tx-4);
-  font-size: var(--fs-mikro);
-  font-family: var(--tk-font-mono);
 }
 
 /* ---------- çubuk / lejant / not ---------- */

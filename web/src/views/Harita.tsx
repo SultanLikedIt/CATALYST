@@ -51,6 +51,44 @@ class SahneKalkani extends Component<{ children: ReactNode; yedek: ReactNode }, 
   }
 }
 
+/** Küre kendiliğinden dönmeye başlamadan önce beklenen boşta süre. */
+const BOSTA_MS = 5 * 60_000;
+
+/**
+ * Boşta kalma sayacı.
+ *
+ * Küre varsayılan olarak sabit durur — dönen bir dünyanın üstünde istasyon
+ * okumaya çalışmak yoruyor. Ekrana `ms` kadar dokunulmazsa vitrin moduna
+ * geçiyor: sunum arasında ekran açık unutulduğunda dünya yavaşça dönmeye
+ * başlıyor, ilk fare hareketinde anında duruyor.
+ *
+ * Sayaç kurup yıkmak yerine zaman damgası tutuluyor: pointermove saniyede
+ * onlarca kez geliyor, her birinde setTimeout değiştirmenin âlemi yok. Uyanma
+ * yine de anlık — `canli` durumu doğrudan kapatıyor, yoklama yalnız açıyor.
+ */
+function useBosta(ms: number) {
+  const [bosta, setBosta] = useState(false);
+  const son = useRef(performance.now());
+
+  useEffect(() => {
+    const canli = () => {
+      son.current = performance.now();
+      setBosta((b) => (b ? false : b));
+    };
+    const olaylar = ['pointerdown', 'pointermove', 'wheel', 'keydown', 'touchstart'] as const;
+    olaylar.forEach((o) => window.addEventListener(o, canli, { passive: true }));
+    const yokla = setInterval(() => {
+      if (performance.now() - son.current >= ms) setBosta(true);
+    }, 2000);
+    return () => {
+      olaylar.forEach((o) => window.removeEventListener(o, canli));
+      clearInterval(yokla);
+    };
+  }, [ms]);
+
+  return bosta;
+}
+
 /* ------------------------------------------------------------- küçük parçalar */
 
 function KCip({
@@ -115,6 +153,7 @@ export default function Harita() {
   const [notAcik, setNotAcik] = useState(false);
   const [odak, setOdak] = useState<Odak | null>(null);
   const [ustH, setUstH] = useState(56);
+  const bosta = useBosta(BOSTA_MS);
 
   const nonce = useRef(0);
   const etiketler = useRef<(HTMLDivElement | null)[]>([]);
@@ -349,7 +388,8 @@ export default function Harita() {
               yaylar={yaylar}
               hedef={rota ? rota.hIdx : null}
               odak={odak}
-              otoDon={!rota && !odakIstek}
+              /* Dönüş artık varsayılan değil: yalnız 5 dk boşta kalınca. */
+              otoDon={bosta && !rota && !odakIstek}
               oncelik={oncelik}
               onSec={setSel}
               onIstasyonUzerinde={setUzerinde}
