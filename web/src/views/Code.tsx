@@ -427,8 +427,8 @@ export default function Code() {
           </div>
           <div className="not">
             <b>Dürüstlük notu.</b> Cümle kalıpları ve güven yüzdeleri dil katmanının kendi
-            beyanıdır; içindeki <b>sayıların hepsi</b> core.py → payload → kural motoru zincirinden
-            gelir. Ürün sürümünde bu katman LLM'e devredilir, motor değişmez.
+            beyanıdır; içindeki <b>sayıların hepsi</b> kural motorundan canlı gelir. Ürün sürümünde
+            bu katman LLM'e devredilir, motor değişmez.
           </div>
         </div>
       </div>

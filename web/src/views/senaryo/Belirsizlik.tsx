@@ -274,7 +274,7 @@ export default function Belirsizlik({
       <Izgara tip="g21" stil={{ marginTop: 12 }}>
         <Kart
           baslik="Senaryoların karşılaştırması"
-          ipucu="On bir senaryonun tamamı aynı anda hesaplanır. Çubuk seçili aralığı, dikey işaret orta değeri gösterir. Bir senaryoya tıklayınca ayarlar ona geçer."
+          ipucu="Çubuk seçili aralığı, dikey işaret orta değeri gösterir. Bir senaryoya tıklayınca ayarlar ona geçer."
         >
           <Grafik cfg={kars.cfg} h={215} onSec={(i) => onPreset(kars.ks[i])} />
         </Kart>

@@ -126,10 +126,7 @@ export default function App() {
             <h1>
               Catalyst · Komponent Envanter <em>Karar Desteği</em>
             </h1>
-            <p>
-              {fmt(K.pn)} parça · 1.200 → 2.000 uçak projeksiyonu · tüm sayılar üç resmi veri
-              setinden <span className="mono">core.py</span> ile hesaplanır.
-            </p>
+            <p>{fmt(K.pn)} parça · 1.200 → 2.000 uçak projeksiyonu</p>
           </header>
         )}
 
@@ -149,8 +146,8 @@ export default function App() {
           <div className="foot">
             <b>Varsayımlar.</b> Kullanılabilir stok = FAAL + HOMEBASE. Harita temsilî dağıtım,
             mevsimsellik tek yıla dayanır. Projeksiyon aralıktır: +{pct(B.alt_pct)} ile +
-            {pct(B.ust_pct)} arası. Kritiklik ağırlıkları, BER eşiği {vir(PRM.ber_esigi)} ve servis
-            hedefleri Senaryo sekmesinden ayarlanabilir. Tüm veriler resmi sentetik case setleridir,
+            {pct(B.ust_pct)} arası. Kritiklik ağırlıkları, BER eşiği {vir(PRM.ber_esigi)} ve alarm
+            tamponu Öngörü sekmesinden ayarlanabilir. Tüm veriler resmi sentetik case setleridir,
             gerçek THY/AMOS verisi değildir.
           </div>
         )}

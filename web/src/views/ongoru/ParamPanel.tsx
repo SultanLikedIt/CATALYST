@@ -44,7 +44,7 @@ export default function ParamPanel() {
         sinif=""
         stil={{ borderColor: 'var(--st-teal-line)' }}
         baslik={<h3 style={{ color: C.teal }}>Model parametreleri</h3>}
-        ipucu="Ağırlıklar, BER eşiği ve alarm tamponu buradan değiştirilir. Bütün sayılar tarayıcıda anında yeniden hesaplanır."
+        ipucu="Ağırlıklar, BER eşiği ve alarm tamponu buradan değiştirilir."
       >
         <Kaydirici
           etiket="AOG kritik ağırlığı"

@@ -463,7 +463,7 @@ export default function Senaryo() {
     <>
       <Bolum
         baslik="Kriz simülatörü: şokun şekli ve süresi"
-        aciklama="Her kriz ya stoğun dayanma süresini kısaltır ya da tedarik süresini uzatır — yani kriz bir parametre şokudur. Sağdaki gül krizin ŞEKLİNİ, soldaki arazi krizin ZAMANA yayılışını gösterir. Aradaki her sayı 5.000 parça üzerinde, core.py ile aynı formüllerle yeniden hesaplanır."
+        aciklama="Her kriz ya stoğun dayanma süresini kısaltır ya da tedarik süresini uzatır. Gül krizin şeklini, arazi zamana yayılışını gösterir."
       />
 
       {/* ---------------------------------------------------------- SEN-01 */}
@@ -483,8 +483,8 @@ export default function Senaryo() {
             </div>
             <div className="hint">
               {mod === 'kategori'
-                ? 'Yükseklik = o ayda o ATA kategorisinde kırmızıya düşen parça sayısı. Satırlar baz ayın değerine göre sıralı: ön sıra en kötü kategori. Bir çubuğa tıklayınca takvim o aya gider.'
-                : 'Yükseklik = o ayda o emniyet marjı kovasındaki parça sayısı. Öndeki dört kova negatif marj — yani tam olarak kırmızı listenin kendisi. Kovalar sıralı olduğu için sıralama uygulanmaz.'}
+                ? 'Yükseklik = o ayda o kategoride kırmızıya düşen parça. Ön sıra en kötü kategori; çubuğa tıklayınca takvim o aya gider.'
+                : 'Yükseklik = o ayda o marj kovasındaki parça. Öndeki dört kova negatif marj — kırmızı listenin kendisi.'}
             </div>
           </div>
 
@@ -587,11 +587,6 @@ export default function Senaryo() {
                 </div>
               </Suspense>
             </SahneKalkani>
-            <div className="hint" style={{ marginTop: 10, marginBottom: 0 }}>
-              Sürükleyerek döndürün. Tekerlek yakınlaştırma bilerek kapalı (sahne sayfanın
-              ortasında, tekerlek yutulunca sayfa kaydırılamıyor); yakınlaştırma sağ alttaki
-              düğmelerde.
-            </div>
           </div>
         </Kart>
 
@@ -663,8 +658,7 @@ export default function Senaryo() {
             />
           </div>
           <div className="hint" style={{ marginTop: 0 }}>
-            Filo ucu gülde YOK, çünkü bir kriz şoku değil yapısal bir varsayım: kriz takviminde de
-            ölçeklenmez. Gülün merkezi "kriz yok" demek zorunda.
+            Filo ucu gülde yok: bir kriz şoku değil, 2033 varsayımı — takvimde de ölçeklenmez.
           </div>
         </Kart>
       </Izgara>
@@ -673,7 +667,7 @@ export default function Senaryo() {
       <div id="sen-takvim" style={{ scrollMarginTop: 70 }}>
         <Bolum
           baslik="Kriz takvimi: şok anlık değil, zamana yayılır"
-          aciklama="Tırmanma → plato → toparlanma. Her ay için şiddet eğrisi bir ağırlık üretir, senaryo o ağırlıkla yeniden ölçeklenir ve 5.000 parça baştan hesaplanır. Bir aya tıklayın: bütün sayfa o aya döner."
+          aciklama="Tırmanma → plato → toparlanma. Bir aya tıklayın, sayfanın tamamı o aya döner."
         />
         <Yigin>
           <Kart
@@ -745,9 +739,8 @@ export default function Senaryo() {
               <Stat l="Kriz yükü" v={fmt(tk.kirmiziAy)} d="parça·ay — süre de maliyettir" />
             </div>
             <div className="hint" style={{ marginTop: 11, marginBottom: 0 }}>
-              Kümülatif dolar bilinçli olarak raporlanmaz: kapatma maliyeti bir <b>stok</b>{' '}
-              büyüklüğüdür (kaç adet eksiğiz × birim fiyat), akış değil. Aylar boyunca toplansaydı
-              aynı eksik defalarca sayılırdı. Bu yüzden zirve maruziyet ve parça·ay raporlanıyor.
+              Kümülatif dolar raporlanmaz: kapatma maliyeti bir <b>stok</b> büyüklüğü, akış değil —
+              aylar boyunca toplansa aynı eksik defalarca sayılırdı.
             </div>
           </Kart>
         </Yigin>
@@ -756,7 +749,7 @@ export default function Senaryo() {
       {/* ---------------------------------------------------------- SEN-03 */}
       <Bolum
         baslik={`Seçili ayın etkisi: ${ay === 0 ? 'kriz öncesi' : ay + '. ay'}`}
-        aciklama="Dört sayı da baz durumla farkıyla birlikte. Baz, kaydırıcıların hepsi nötrken çıkan bugünkü fotoğraftır — saha verisiyle doğrulanmış 134 kırmızı."
+        aciklama="Dört sayı da baz durumla farkıyla birlikte."
       />
       <Izgara tip="g4">
         <Stat
@@ -805,7 +798,7 @@ export default function Senaryo() {
       {/* ---------------------------------------------------------- SEN-04 */}
       <Bolum
         baslik="Kriz alarmları"
-        aciklama="Bir alarm bir eşik aşımıdır: koşulu sağlanmayan alarm listeye hiç girmez. Baz durumda ray neredeyse boştur — sakin ekran, sakin sistem demektir."
+        aciklama="Bir alarm bir eşik aşımıdır: koşulu sağlanmayan alarm listeye girmez."
       />
       <Yigin>
         <div className="alm">
@@ -840,10 +833,9 @@ export default function Senaryo() {
           ))}
         </div>
         <div className="hint" style={{ marginTop: 10 }}>
-          <b>Dürüstlük notu.</b> Bu kartların dil katmanı — cümle kalıpları, eşikler, öncelik sırası
-          ve güven yüzdeleri — kodda sabittir. İçindeki <b>sayıların hepsi</b> senaryo motorundan
-          canlı gelir; ray bir dil modeli çıktısı değildir. Aynı ayrım CODE sekmesindeki içgörü
-          akışında da geçerlidir.
+          <b>Dürüstlük notu.</b> Cümle kalıpları, eşikler ve güven yüzdeleri kodda sabittir;
+          içindeki <b>sayıların hepsi</b> senaryo motorundan canlı gelir. Ray bir dil modeli çıktısı
+          değildir.
         </div>
       </Yigin>
 
@@ -851,13 +843,13 @@ export default function Senaryo() {
       <Izgara tip="g21" stil={{ marginTop: 14 }}>
         <Kart
           baslik="Takvim boyunca kırmızı ve fatura"
-          ipucu="Sol eksen kırmızı parça sayısı, sağ eksen kapatma maliyeti. Bir noktaya tıklayınca seçili ay değişir ve sayfanın tamamı o aya döner."
+          ipucu="Sol eksen kırmızı parça, sağ eksen kapatma maliyeti. Noktaya tıklayınca seçili ay değişir."
         >
           <Grafik cfg={takvimCfg} h={250} onSec={(i) => aySec(i)} />
         </Kart>
         <Kart
           baslik="Kritiklik sınıfına göre"
-          ipucu="Kırmızının sınıflara dağılımı: seçili ay ile baz durum yan yana. AOG kritik sütunundaki her artış 'yerde uçak' demektir."
+          ipucu="Seçili ay ile baz durum yan yana. AOG kritik sütunundaki her artış 'yerde uçak' demek."
         >
           <Grafik cfg={krCfg} h={250} />
         </Kart>
@@ -881,15 +873,13 @@ export default function Senaryo() {
             ipucu={
               dagMod === 'marj' ? (
                 <>
-                  Marj = dayanma süresi − tedarik süresi − alarm tamponu. İlk dört kova (negatif
-                  marj) <b>tam olarak kırmızı listenin kendisidir</b>: {fmt(r.kir)} parça. Marj her
-                  iki şoku da görür, varsayılan görünüm bu yüzden budur.
+                  Marj = dayanma süresi − tedarik süresi − tampon. İlk dört kova (negatif marj){' '}
+                  <b>kırmızı listenin kendisi</b>: {fmt(r.kir)} parça.
                 </>
               ) : (
                 <>
-                  Dayanma süresi = stok / talep. <b>Tanım gereği tedarik süresini görmez</b>: bir
-                  lojistik krizinde bu dağılım kımıldamaz ama parçalar kırmızıya düşer. Sınır
-                  gizlenmiyor, yazıyla söyleniyor — şok etkisini görmek için marj görünümüne geçin.
+                  Dayanma süresi = stok / talep, <b>tanım gereği tedarik süresini görmez</b>:
+                  lojistik krizinde bu dağılım kımıldamaz ama parçalar kırmızıya düşer.
                 </>
               )
             }
@@ -903,7 +893,7 @@ export default function Senaryo() {
       <div id="sen-belirsizlik" style={{ scrollMarginTop: 70 }}>
         <Bolum
           baslik="Belirsizlik denemeleri: plan kaç farklı gelecekte tutuyor?"
-          aciklama='Talep kesin bir sayı değil, bir dağılım. Her parça için tedarik süresi boyunca gelen talebin stoğu aşma olasılığı hesaplanır; bunların toplamı "kaç parça açıkta kalır" sorusunun tek bir cevabını değil, bütün bir aralığını verir. Aşağıdaki her sayı yukarıdaki senaryo ayarına bağlıdır.'
+          aciklama="Talep kesin bir sayı değil, bir dağılım: cevap tek bir sayı değil, bir aralık."
         />
         <Belirsizlik cfg={cfg} preset={sc.preset} onPreset={presetSec} />
       </div>
@@ -914,10 +904,8 @@ export default function Senaryo() {
           baslik="Duyarlılık: seçili senaryonun etrafında ne oynatır?"
           ipucu={
             <>
-              Altı etken, <b>baz duruma göre değil seçili senaryonun etrafında</b> iki uca çekiliyor
-              — kriz derinleştikçe baskın etken değişir ve tablonun işi tam olarak bunu göstermek.
-              Kabiliyet yatırımı bu listede yok: o bir şok ekseni değil bir karar, kendi panelinde
-              duruyor.
+              Altı etken, <b>baz duruma göre değil seçili senaryonun etrafında</b> iki uca
+              çekiliyor: kriz derinleştikçe baskın etken değişir.
             </>
           }
         >
@@ -927,11 +915,9 @@ export default function Senaryo() {
           baslik="Kısıtlı bütçeyle önce hangi parça alınır?"
           ipucu={
             <>
-              Her adet için "harcanan para başına ne kadar ağırlıklı risk azalıyor" hesaplanıyor ve{' '}
-              {fmt(th.toplamAdim)} alım adımının hepsi bu ölçüye göre sıralanıyor. Tamamı{' '}
-              {mM(th.toplamButce)}, ama kazanımın %80'i <b>{mM(th.butce80)}</b> ile doluyor. Gri
-              kesikli çizgi build sırasında ayrı kodla üretilen referans eğrisi — biri diğerinin
-              yerine geçmez, çakışmaları bir doğrulamadır.
+              {fmt(th.toplamAdim)} alım adımı "para başına düşen risk azalımı"na göre sıralanıyor.
+              Tamamı {mM(th.toplamButce)}, ama kazanımın %80'i <b>{mM(th.butce80)}</b> ile doluyor.
+              Gri kesikli çizgi build zamanı referans eğrisi.
             </>
           }
         >
@@ -942,7 +928,7 @@ export default function Senaryo() {
       <Yigin stil={{ marginTop: 4 }}>
         <Kart
           baslik="Verim sırasında ilk 10 parça"
-          ipucu="Aynı parça birden çok adımla listeyi doldurmasın diye verim sırasında ilk kez görülen parçalar alınır. Satıra tıklayınca parça detayı açılır."
+          ipucu="Verim sırasında ilk kez görülen parçalar. Satıra tıklayınca detay açılır."
         >
           <div className="tw" style={{ maxHeight: 300 }}>
             <table>
@@ -1080,23 +1066,15 @@ export default function Senaryo() {
           <span className="mono">
             g = gün · (1+icKap/100 | iç) · (1+l/100 | disOnly değilse) + gümrük (dış)
           </span>
-          . Kırmızı testi <span className="mono">TTS = SVC/λ&apos; &lt; TTR&apos; + tampon</span>;
-          2033 planı{' '}
-          <span className="mono">
-            MIN&apos; = ⌈μ&apos;⌉ + Poisson emniyet stoğu (servis hedefi)
-          </span>{' '}
-          ile <span className="mono">μ&apos; = rate33·mTalep·lead&apos;·bant / 91,25</span>. Kur
-          yalnız $ kalemleri ölçekler ve BER eşiğini kaydırır; havuz kaybı adetlere hiç dokunmaz,
-          yalnız faturayı büyütür. Kriz takvimi aynı fonksiyonu ay ay, şiddet eğrisiyle ölçeklenmiş
-          ayarla çağırır — çarpanlar 1&apos;den başlar, yapısal varsayımlar ölçeklenmez.{' '}
+          . Kırmızı testi <span className="mono">TTS = SVC/λ&apos; &lt; TTR&apos; + tampon</span>,
+          2033 planı <span className="mono">MIN&apos; = ⌈μ&apos;⌉ + Poisson emniyet stoğu</span>.
+          Kur yalnız $ kalemleri ölçekler, havuz kaybı adetlere dokunmaz.{' '}
           <b>
             Nötr ayarda motor baz durumu birebir verir: {fmt(BAZ.kir)} kırmızı, {fmt(BAZ.kirAog)}{' '}
             AOG kritik, {fmt(K.siparissiz)} siparişsiz.
           </b>{' '}
-          Formüller <span className="mono">core.py</span> ile birebir; parite testleri bu sayıları
-          kilitliyor. BER eşiği <span className="mono">{vir(D.params.ber_esigi)}</span>, alarm
-          tamponu {fmt(params.tampon)} gün — ikisi de Öngörü sekmesindeki parametre panelinden
-          ayarlanır.
+          BER eşiği <span className="mono">{vir(D.params.ber_esigi)}</span>, alarm tamponu{' '}
+          {fmt(params.tampon)} gün — ikisi de Öngörü sekmesindeki parametre panelinden ayarlanır.
         </div>
       </Yigin>
     </>

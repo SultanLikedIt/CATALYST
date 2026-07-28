@@ -561,7 +561,7 @@ export default function Ongoru() {
           besler, iki ekran aynı kırmızı sayısını üretir. */}
       <Bolum
         baslik="Model parametreleri: sayılar sizin elinizde"
-        aciklama='"Ağırlık neden 3?" sorusunun cevabı bir savunma değil bir kaydırıcı: değiştirin, 5.000 parça anında yeniden hesaplansın ve liste jürinin gözü önünde yeniden sıralansın. Buradaki alarm tamponu ve BER eşiği Senaryo sekmesindeki kriz motorunu da doğrudan etkiler.'
+        aciklama='"Ağırlık neden 3?" sorusunun cevabı bir savunma değil bir kaydırıcı. Buradaki alarm tamponu ve BER eşiği Senaryo sekmesindeki kriz motorunu da besler.'
       />
       <ParamPanel />
     </>

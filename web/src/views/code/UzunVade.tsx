@@ -145,7 +145,7 @@ export default function UzunVade() {
       <div className="not">
         <b>Bu plan nasıl üretildi.</b> Faz sırası ve anlatı ürün kararıdır; içindeki sayılar
         payload'dan canlı gelir. Dil katmanı demoda hazır metinlerle çalışır — cümleyi kuran
-        senaryodur, sayıyı kuran <b>core.py</b>. Gerçek kurulumda aynı yerler bir LLM'in araç
+        senaryodur, sayıyı kuran <b>motor</b>. Gerçek kurulumda aynı yerler bir LLM'in araç
         çağrılarıyla doldurulur; motorun kendisi değişmez.
       </div>
     </div>
