@@ -13,19 +13,21 @@
    ===================================================================== */
 
 .kure {
-  --k-bg: #07070a;
-  --k-panel: rgba(13, 13, 16, 0.84);
-  --k-panel2: rgba(22, 22, 26, 0.92);
-  --k-line: rgba(255, 255, 255, 0.12);
-  --k-line2: rgba(255, 255, 255, 0.3);
-  --k-tx: #f2f3f5;
-  --k-tx2: #a3a5ad;
-  --k-tx3: #6f7178;
-  --k-aks: #ff2d40; /* seçim/odak — eski cyan'ın yerine */
-  --k-marka: #e81932; /* dolgu ve birincil eylem tonu */
-  --k-red: #ff5a68; /* alarm metni (koyu zeminde okunur ton) */
-  --k-uyari: #ff9aa2;
-  --k-iyi: #ffffff;
+  /* Küre zemini koyu kalır (medya yüzeyi), HUD panelleri AÇIK cam olur —
+     böylece harita, sayfanın geri kalanıyla aynı dili konuşur. */
+  --k-bg: var(--md-1);
+  --k-panel: var(--cam);
+  --k-panel2: var(--cam-2);
+  --k-line: var(--cam-line);
+  --k-line2: var(--ln-strong);
+  --k-tx: var(--tx);
+  --k-tx2: var(--tx-2);
+  --k-tx3: var(--tx-3);
+  --k-aks: var(--tk-red); /* seçim / odak */
+  --k-marka: var(--tk-red); /* birincil eylem */
+  --k-red: var(--st-red); /* alarm */
+  --k-uyari: var(--st-amber);
+  --k-iyi: var(--st-teal);
 
   position: relative;
   width: 100vw;
@@ -66,7 +68,7 @@ body:has(.kure) {
   font-family: var(--tk-font-mono);
   font-size: var(--fs-mikro);
   letter-spacing: 0.2em;
-  color: var(--k-tx3);
+  color: var(--md-tx-2);
 }
 .kure-yedek {
   place-content: start center;
@@ -74,12 +76,12 @@ body:has(.kure) {
   letter-spacing: 0;
   font-family: var(--tk-font);
   font-size: var(--fs-kucuk);
-  color: var(--k-tx2);
+  color: var(--md-tx-2);
   max-width: 620px;
   margin: 0 auto;
 }
 .kure-yedek b {
-  color: var(--k-tx);
+  color: var(--md-tx);
 }
 .kure-yedek ul {
   margin: 10px 0 0;
@@ -103,10 +105,8 @@ body:has(.kure) {
   background: var(--k-panel);
   backdrop-filter: blur(14px) saturate(140%);
   border: 1px solid var(--k-line);
-  border-radius: 3px;
-  box-shadow:
-    0 18px 44px rgba(0, 0, 0, 0.45),
-    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  border-radius: var(--r-md);
+  box-shadow: var(--cam-sh);
   display: flex;
   flex-direction: column;
   min-height: 0;
@@ -118,7 +118,7 @@ body:has(.kure) {
   gap: 8px;
   padding: 9px 11px;
   border-bottom: 1px solid var(--k-line);
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.05), transparent);
+  background: linear-gradient(180deg, rgba(22, 35, 58, 0.035), transparent);
   flex: none;
 }
 .kp-bas h3 {
@@ -214,7 +214,7 @@ body:has(.kure) {
 .kcip:hover:not(:disabled) {
   color: var(--k-tx);
   border-color: var(--k-line2);
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(22, 35, 58, 0.06);
 }
 /* Seçili çip THY düğmesi gibi: marka kırmızısı dolgu + beyaz metin. Parlak
    alarm tonu (--k-aks) dolgu olarak kullanılınca üzerindeki yazı bulanıyordu. */
@@ -442,11 +442,11 @@ body:has(.kure) {
 .kuyari {
   margin-top: 9px;
   padding: 6px 8px;
-  border: 1px solid rgba(255, 45, 64, 0.4);
-  background: rgba(255, 45, 64, 0.1);
-  border-radius: 2px;
+  border: 1px solid var(--st-red-line);
+  background: var(--st-red-soft);
+  border-radius: var(--r-sm);
   font-size: 10.5px;
-  color: #ffb0b7;
+  color: var(--st-red);
 }
 .mono {
   font-family: var(--tk-font-mono);
@@ -470,7 +470,7 @@ body:has(.kure) {
   background: var(--k-panel);
   backdrop-filter: blur(10px);
   color: var(--k-tx2);
-  border-radius: 2px;
+  border-radius: var(--r-sm);
   font-size: 12px;
   cursor: pointer;
   transition:
@@ -494,7 +494,8 @@ body:has(.kure) {
   align-items: center;
   gap: 12px;
   padding: 0 16px;
-  background: linear-gradient(180deg, rgba(7, 7, 10, 0) 0%, rgba(7, 7, 10, 0.94) 55%);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0.94) 55%);
+  backdrop-filter: blur(8px);
   font-size: 10.5px;
   color: var(--k-tx3);
   overflow: hidden;
@@ -516,7 +517,7 @@ body:has(.kure) {
 }
 .kure-serit .durum.kriz {
   color: var(--k-red);
-  border-color: rgba(255, 45, 64, 0.5);
+  border-color: var(--st-red-line);
 }
 .kure-serit .lej {
   display: inline-flex;
@@ -525,7 +526,7 @@ body:has(.kure) {
   flex: none;
 }
 .kure-serit .lej.sol-bosluk {
-  color: #5a5c63;
+  color: var(--tx-4);
   overflow: hidden;
   text-overflow: ellipsis;
   flex: 1;
@@ -562,9 +563,11 @@ body:has(.kure) {
   align-items: baseline;
   gap: 6px;
   padding: 3px 6px 3px 7px;
-  background: rgba(10, 10, 13, 0.72);
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  border-radius: 2px;
+  background: var(--cam);
+  backdrop-filter: blur(8px);
+  border: 1px solid var(--cam-line);
+  border-radius: var(--r-sm);
+  box-shadow: 0 4px 12px -4px rgba(8, 15, 28, 0.5);
   font-family: var(--tk-font-mono);
   font-size: 9.5px;
   letter-spacing: 0.09em;
@@ -589,8 +592,8 @@ body:has(.kure) {
 }
 .kist.on {
   border-color: var(--k-aks);
-  background: rgba(24, 10, 13, 0.94);
-  box-shadow: 0 0 16px rgba(255, 45, 64, 0.3);
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(232, 25, 50, 0.18), 0 6px 16px -6px rgba(8, 15, 28, 0.5);
 }
 .kist:hover {
   border-color: var(--k-line2);
@@ -605,14 +608,15 @@ body:has(.kure) {
   flex-direction: column;
   gap: 2px;
   padding: 8px 10px;
-  background: rgba(10, 10, 13, 0.95);
-  border: 1px solid var(--k-line2);
-  border-radius: 3px;
+  background: var(--cam);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--cam-line);
+  border-radius: var(--r-sm);
   font-size: 10.5px;
   line-height: 1.5;
   color: var(--k-tx2);
   pointer-events: none;
-  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5);
+  box-shadow: var(--cam-sh);
 }
 .kure-ipucu b {
   color: var(--k-tx);

@@ -65,6 +65,27 @@
   --kr-1: #b87500;
   --kr-2: #8a929c;
 
+  /* ---------- medya yüzeyleri (3D sahneler) ----------
+     TEK KOYU YÜZEY KURALI: sayfanın tamamı açıktır; koyu yalnız 3D sahnenin
+     İÇİNDE bulunur ve bir fotoğraf gibi kartın içine alınır. Siyah değil derin
+     lacivert — siyah "terminal", lacivert "premium havacılık" okunur. */
+  --md-1: #0e1727; /* sahne zemini */
+  --md-2: #16233a; /* sahne ikincil yüzey */
+  --md-3: #1f3050;
+  --md-line: rgba(255, 255, 255, 0.13);
+  --md-line-2: rgba(255, 255, 255, 0.26);
+  --md-tx: #eef2f7;
+  --md-tx-2: #9fb0c9;
+  --md-tx-3: #74839c;
+
+  /* ---------- cam paneller (medya üstünde yüzen HUD) ----------
+     Koyu sahnenin üstünde AÇIK panel: sayfanın geri kalanıyla aynı dili konuşur,
+     böylece harita "başka bir uygulama" gibi durmaz. */
+  --cam: rgba(255, 255, 255, 0.93);
+  --cam-2: rgba(255, 255, 255, 0.82);
+  --cam-line: rgba(22, 35, 58, 0.1);
+  --cam-sh: 0 12px 36px -14px rgba(8, 15, 28, 0.55);
+
   /* ---------- tipografi ---------- */
   /* Lisanslı THY yazı tipi eklenecekse yalnız bu iki satır değişir. */
   --tk-font-display:

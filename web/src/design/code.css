@@ -1,62 +1,51 @@
 /* =====================================================================
-   CODE — Component Decision Engine · operasyon konsolu katmanı
-   Görsel dil: koyu taktik konsol (Palantir Gotham havası) — hairline
-   çerçeveler, keskin köşeler, mono etiketler, yoğun ızgara, glow yerine
-   sinyal renkleri. Uygulamanın geri kalanı AÇIK THY temasında kalır;
-   bu dosya YALNIZ ilk sayfayı (CODE) sarar.
+   CODE — Component Decision Engine
+   Görsel dil: turkishairlines.com — AÇIK zemin, geniş beyaz alan, beyaz
+   kartlar, ince gri çizgiler, tek güçlü kırmızı vurgu. (28 Tem 2026'da
+   koyu "taktik konsol" temasından çıkarıldı: uygulamada iki ayrı görsel dil
+   vardı, CODE ve HARİTA siyah terminal, kalan üç ekran açık THY. Artık tek
+   dil var.)
 
-   PALET (27 Tem 2026, kullanıcı kararı): SİYAH · KIRMIZI · BEYAZ —
-   turkishairlines.com kimliği. Mavi/cyan/teal/mor YOK. Üç rol:
-     · siyah–gri  → zemin, çerçeve, pasif seri
-     · beyaz      → yapı aksanı ve "aksiyon/iyi" durumu
-     · kırmızı    → aciliyet ve marka eylemi (açık #ff9aa2 uyarı → parlak
-                    #ff3b4a alarm → marka --tk-red birincil eylem)
-   Seriler hue ile değil AÇIKLIK basamağıyla ayrışır; bu yüzden değişkenler
-   artık renk adıyla değil ROLLE adlandırıldı (--c-akw beyaz aksan, --c-gri
-   ikincil nötr, --c-alt üçüncül nötr, --c-uyari açık kırmızı, --c-red alarm).
+   TEK KOYU YÜZEY KURALI: koyu ton yalnız 3D sahnenin İÇİNDE kalır ve bir
+   fotoğraf gibi beyaz kartın içine alınır (--md-* tokenları). Sayfa krome'u
+   (kart, tablo, çip, düğme, tipografi) beş ekranda birebir aynıdır.
+
+   Değişken adları KORUNDU (--c-*), yalnız değerleri token sistemine bağlandı;
+   böylece 248 kural ve TSX çağrıları tek satır değişmeden temaya uydu.
    ===================================================================== */
 
 .code {
-  /* ---- konsol paleti ---- */
-  --c-bg: #08080a;
-  --c-bg2: #0e0e11;
-  --c-panel: #141418;
-  --c-panel2: #1c1c22;
-  --c-line: #2a2a31;
-  --c-line2: #45454f;
-  --c-line-soft: #1f1f25;
-  --c-grid: rgba(232, 25, 50, 0.05);
-  --c-tx: #e4e5e9;
-  --c-tx2: #9b9da5;
-  --c-tx3: #6b6d75;
-  --c-akw: #ffffff; /* beyaz aksan: teknik etiket, seçim, vurgu */
-  --c-iyi: #f2f3f5; /* iyi/kazanım — koyu zeminde "temiz" beyaz */
-  --c-gri: #c9cbd1; /* ikincil nötr seri */
-  --c-alt: #7a7c84; /* üçüncül nötr seri */
-  --c-uyari: #ff9aa2; /* uyarı — açık kırmızı */
-  --c-red: #ff3b4a; /* alarm / kritik veri */
-  --c-red2: #b0111f; /* bağlı sermaye / fazla stok — koyu kırmızı */
+  /* ---- palet: hepsi tokens.css'ten türer, yerel renk tanımı yok ---- */
+  --c-bg: var(--s-1); /* sayfa zemini */
+  --c-bg2: var(--s-2); /* ikincil dolgu (durum şeridi, tablo başlığı) */
+  --c-panel: var(--s-0); /* beyaz kart */
+  --c-panel2: var(--s-2);
+  --c-line: var(--ln);
+  --c-line2: var(--ln-strong);
+  --c-line-soft: var(--ln-soft);
+  --c-grid: transparent; /* taktik ızgara kaldırıldı */
+  --c-tx: var(--tx);
+  --c-tx2: var(--tx-2);
+  --c-tx3: var(--tx-3);
+  /* Yapı aksanı: 28 kullanım. Marka kırmızısı OLAMAZ — ekran kırmızıya boğulur.
+     Açık temada "vurgu" mürekkep tonudur; kırmızı yalnız kimlik ve birincil eylem. */
+  --c-akw: var(--tx);
+  --c-iyi: var(--st-teal); /* iyi / kazanım */
+  --c-gri: var(--st-gray); /* ikincil nötr seri */
+  --c-alt: var(--tx-4); /* üçüncül nötr seri */
+  --c-uyari: var(--st-amber); /* uyarı */
+  --c-red: var(--st-red); /* alarm / kritik veri */
+  --c-red2: var(--st-violet); /* bağlı sermaye / fazla stok */
 
   position: relative;
   margin-left: calc(50% - 50vw);
   margin-right: calc(50% - 50vw);
-  padding: 0 max(24px, calc(50vw - var(--en) / 2)) 40px;
+  /* Tam genişlik ama içerik .wrap ile HİZALI: .wrap'in kendi 24px iç boşluğu da
+     hesaba katılır, yoksa CODE diğer sekmelerden 24px sola kayıyordu. */
+  padding: 0 max(24px, calc(50vw - var(--en) / 2 + 24px)) 48px;
   background: var(--c-bg);
   color: var(--c-tx);
   font-feature-settings: 'tnum' 1;
-}
-
-/* zemin ızgarası — taktik harita hissi, içeriği bastırmayacak kadar soluk */
-.code::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background-image:
-    linear-gradient(var(--c-grid) 1px, transparent 1px),
-    linear-gradient(90deg, var(--c-grid) 1px, transparent 1px);
-  background-size: 44px 44px;
-  mask-image: linear-gradient(180deg, #000 0%, #000 62%, transparent 100%);
 }
 
 .code > * {
@@ -84,13 +73,15 @@
   gap: 16px;
   flex-wrap: wrap;
 }
+/* Marka bloğu: THY başlık dili — display font, sıkı harf aralığı, mürekkep
+   üstünde tek kırmızı harf. (Eski dev mono logo "terminal" okunuyordu.) */
 .code-marka h1 {
-  font-family: var(--tk-font-mono);
-  font-size: clamp(3.6rem, 11vw, 8.2rem);
-  line-height: 0.86;
-  font-weight: 700;
-  letter-spacing: -0.055em;
-  color: #f7f8fa;
+  font-family: var(--tk-font-display);
+  font-size: clamp(3rem, 8.5vw, 6.2rem);
+  line-height: 0.9;
+  font-weight: 800;
+  letter-spacing: -0.045em;
+  color: var(--tx);
   margin: 0;
   position: relative;
 }
@@ -101,19 +92,22 @@
 .code-marka .sur {
   font-family: var(--tk-font-mono);
   font-size: var(--fs-mikro);
-  letter-spacing: 0.22em;
-  color: var(--c-tx3);
-  border: 1px solid var(--c-line);
-  padding: 3px 8px;
+  letter-spacing: 0.18em;
+  color: var(--tx-3);
+  border: 1px solid var(--ln);
+  border-radius: var(--r-tam);
+  background: var(--s-0);
+  padding: 4px 10px;
   white-space: nowrap;
 }
 .code-acilim {
   margin-top: 12px;
-  font-family: var(--tk-font-mono);
-  font-size: clamp(0.78rem, 1.5vw, 1.02rem);
-  letter-spacing: 0.34em;
+  font-family: var(--tk-font-sans);
+  font-size: clamp(0.82rem, 1.5vw, 1.02rem);
+  font-weight: 600;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: var(--c-akw);
+  color: var(--tk-red);
 }
 .code-alt {
   margin-top: 12px;
@@ -134,7 +128,10 @@
   gap: 0;
   margin-top: 18px;
   border: 1px solid var(--c-line);
-  background: var(--c-bg2);
+  border-radius: var(--r-md);
+  overflow: hidden;
+  background: var(--c-panel);
+  box-shadow: var(--sh-1);
 }
 .code-durum > div {
   flex: 1 1 130px;
@@ -194,12 +191,17 @@
 }
 
 /* ------------------------------------------------------------ 3D sahne */
+/* 3D sahne — sayfanın TEK koyu yüzeyi. Siyah değil derin lacivert ve beyaz
+   kartın içine alınmış bir medya panosu: "başka bir uygulama" değil, THY
+   sayfasındaki görsel. */
 .code-sahne {
   position: relative;
   border: 1px solid var(--c-line);
-  background: radial-gradient(120% 90% at 50% 12%, #1a1216 0%, #0a0a0c 62%, #050506 100%);
+  border-radius: var(--r-md);
+  background: radial-gradient(120% 90% at 50% 10%, var(--md-3) 0%, var(--md-2) 45%, var(--md-1) 100%);
   height: 460px;
   overflow: hidden;
+  box-shadow: var(--sh-2);
 }
 @media (max-width: 1080px) {
   .code-sahne {
@@ -210,13 +212,10 @@
   display: block;
 }
 /* köşe nişangahları */
+/* Köşe nişangahları kaldırıldı (taktik konsol dili). Kural korunuyor ki
+   TSX'teki .kose düğümleri boşta kalsın; görünmezler. */
 .code-sahne .kose {
-  position: absolute;
-  width: 13px;
-  height: 13px;
-  border: 1px solid var(--c-akw);
-  opacity: 0.55;
-  pointer-events: none;
+  display: none;
 }
 .code-sahne .kose.tl {
   top: 7px;
@@ -254,14 +253,14 @@
   font-family: var(--tk-font-mono);
   font-size: var(--fs-mikro);
   letter-spacing: 0.12em;
-  color: var(--c-tx3);
+  color: var(--md-tx-3);
   text-transform: uppercase;
 }
 .sahne-hud .sag {
   text-align: right;
 }
 .sahne-hud b {
-  color: var(--c-tx);
+  color: var(--md-tx);
   font-weight: 600;
 }
 .sahne-lgn {
@@ -306,13 +305,13 @@
 }
 .knode b {
   display: block;
-  color: #dcdde2;
+  color: var(--md-tx);
   font-weight: 600;
 }
 .knode i {
   display: block;
   font-style: normal;
-  color: #6b6d75;
+  color: var(--md-tx-3);
   letter-spacing: 0.06em;
   text-transform: lowercase;
   opacity: 0;
@@ -324,6 +323,7 @@
 }
 .knode.on b {
   color: #ffffff;
+  text-shadow: 0 0 10px rgba(232, 25, 50, 0.55);
 }
 
 /* küre üzerinde imleç altındaki parça */
@@ -474,29 +474,29 @@
   white-space: nowrap;
 }
 .crz.al {
-  color: var(--c-red);
-  border-color: #5e1a22;
-  background: #1e1013;
+  color: var(--st-red);
+  border-color: var(--st-red-line);
+  background: var(--st-red-soft);
 }
 .crz.uy {
-  color: var(--c-uyari);
-  border-color: #5e2e34;
-  background: #1d1214;
+  color: var(--st-amber);
+  border-color: var(--st-amber-line);
+  background: var(--st-amber-soft);
 }
 .crz.iy {
-  color: var(--c-iyi);
-  border-color: #3d3f46;
-  background: #17181c;
+  color: var(--st-teal);
+  border-color: var(--st-teal-line);
+  background: var(--st-teal-soft);
 }
 .crz.bl {
-  color: var(--c-gri);
-  border-color: #33343b;
-  background: #141418;
+  color: var(--st-blue);
+  border-color: var(--st-blue-line);
+  background: var(--st-blue-soft);
 }
 .crz.mo {
-  color: var(--c-alt);
-  border-color: #2c2d33;
-  background: #141418;
+  color: var(--st-violet);
+  border-color: var(--ln-strong);
+  background: var(--st-violet-soft);
 }
 .crz.no {
   color: var(--c-tx3);
@@ -521,9 +521,9 @@
   color: var(--c-akw);
 }
 .ccip.on {
-  border-color: var(--c-akw);
-  color: #0a0a0c;
-  background: var(--c-akw);
+  border-color: var(--tk-red);
+  color: #fff;
+  background: var(--tk-red);
 }
 
 /* -------------------------------------------------------- içgörü akışı */
@@ -619,7 +619,7 @@
 /* motor log şeridi */
 .ai-log {
   border: 1px solid var(--c-line);
-  background: #0c0c0f;
+  background: var(--s-2);
   padding: 8px 12px;
   font-family: var(--tk-font-mono);
   font-size: var(--fs-mikro);
@@ -679,7 +679,7 @@
   background: var(--c-panel2);
 }
 .kq-row.on {
-  background: #1c1c22;
+  background: var(--s-3);
   box-shadow: inset 2px 0 0 var(--c-akw);
 }
 .kq-row .im {
@@ -787,7 +787,7 @@
 }
 .code .oner .etki > div {
   border-color: var(--c-line);
-  background: #121216;
+  background: var(--s-2);
 }
 .code .oner .etki span {
   color: var(--c-tx3);
@@ -822,10 +822,10 @@
 }
 .code .btn.danger {
   color: var(--c-red);
-  border-color: #5e1a22;
+  border-color: var(--st-red-line);
 }
 .code .ladder .step {
-  background: #121216;
+  background: var(--s-2);
   border-color: var(--c-line);
 }
 .code .ladder .step:hover {
@@ -833,7 +833,7 @@
 }
 .code .ladder .step.best {
   border-color: var(--c-akw);
-  background: #1a1216;
+  background: var(--st-red-soft);
 }
 .code .step .no {
   background: var(--c-panel2);
@@ -1011,7 +1011,7 @@
   align-items: center;
   gap: 5px;
   border: 1px solid var(--c-line);
-  background: #121216;
+  background: var(--s-2);
   padding: 8px;
 }
 .trf-yol .uc {
@@ -1296,7 +1296,7 @@
   border: 1px solid var(--c-line);
 }
 .mini-tab > div {
-  background: #121216;
+  background: var(--s-2);
   padding: 7px 9px;
 }
 .mini-tab span {
@@ -1370,40 +1370,11 @@
   font-size: var(--fs-mikro);
 }
 
-/* ---------------------------------------------------- CODE'da üst bar tonu
-   İlk sayfa baştan sona konsoldur: marka şeridi de koyu yüzeye geçer.
-   Diğer sekmelerde bar açık THY temasında kalır (App.tsx sınıfı kaldırır). */
-.topbar.koyu {
-  background: #0c0c0f;
-  border-bottom-color: #2a2a31;
-}
-.topbar.koyu .brand b,
-.topbar.koyu .brand {
-  color: #f2f3f5;
-}
-.topbar.koyu .synth {
-  background: #1c1c22;
-  border-color: #2a2a31;
-  color: #9b9da5;
-}
-.topbar.koyu .dic-btn {
-  background: #141418;
-  border-color: #2a2a31;
-  color: #9b9da5;
-}
-.topbar.koyu .dic-btn:hover {
-  border-color: #ffffff;
-  color: #ffffff;
-}
-.topbar.koyu .tab {
-  color: #9b9da5;
-}
-.topbar.koyu .tab:hover {
-  color: #e4e5e9;
-}
-.topbar.koyu .tab.on {
-  color: #ffffff;
-}
+/* ---------------------------------------------------- üst bar
+   KOYU ÜST BAR KALDIRILDI (28 Tem 2026). Eskiden CODE ve HARİTA sekmelerinde
+   bar koyu tona geçiyordu; bu, uygulamanın "iki ayrı site" gibi görünmesinin
+   en görünür sebebiydi. Artık tek nav var: her sekmede açık THY şeridi.
+   Koyu ton yalnız 3D sahnenin içinde kalır. */
 
 /* küre yakınlaştırma düğmeleri (tekerlek sayfayı kaydırsın diye) */
 .kure-zoom {

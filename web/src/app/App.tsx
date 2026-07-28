@@ -50,10 +50,10 @@ function UstBar() {
   const git = useStore((s) => s.git);
   const bas = useStore((s) => s.sozlugeBas);
 
-  // Koyu ekranlarda (CODE konsolu, tam ekran küre) üst bar da tona uyar.
-  const koyu = sekme === 'karar' || sekme === 'harita';
+  // Tek nav dili: üst bar her sekmede açık THY şeridi. (Eski koyu varyant
+  // kaldırıldı — uygulamanın iki ayrı site gibi görünmesinin ana sebebiydi.)
   return (
-    <nav className={'topbar' + (koyu ? ' koyu' : '')}>
+    <nav className="topbar">
       <div className="topbar-in">
         <span className="brand">
           <MarkaIsaret />

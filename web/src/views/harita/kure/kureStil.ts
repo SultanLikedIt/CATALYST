@@ -13,15 +13,15 @@
  */
 
 export const KURE_RENK = {
-  uzay: '#07070a',
-  okyanus: '#101014',
-  kara: '#7a2b35', // bordo kara kütlesi — siyah okyanusta kırmızı dünya
-  kiyi: '#ff6b78',
-  izgara: '#2b2b33',
-  atmosfer: '#e81932',
-  yildiz: '#d6d7dc',
-  metin: '#f2f3f5',
-  notr: '#94969e', // tipi bilinmeyen kanal / yedek renk
+  uzay: '#0e1727', // derin lacivert (tokens --md-1) — siyah "terminal" okunuyordu
+  okyanus: '#16233a', // --md-2
+  kara: '#24374f', // lacivert-gri kara kütlesi; kırmızı yalnız vurgu için ayrıldı
+  kiyi: '#5b7699',
+  izgara: '#22334f',
+  atmosfer: '#e81932', // THY kırmızısı — atmosfer halkası markanın tek işareti
+  yildiz: '#cdd8e6',
+  metin: '#eef2f7',
+  notr: '#8fa0b8',
 } as const;
 
 /** seçim ve odak halkaları — ekranda kırmızı halka her zaman "seçili" demek */
