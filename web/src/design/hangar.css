@@ -85,6 +85,15 @@ body.hgr-kilit {
   border-left: 1px solid var(--md-line);
   padding-left: 10px;
 }
+/* Koyu sahnede aynı ayraç: çizgi rengi medya yüzeyinin kendi çizgisinden. */
+.hgr-marka .thy-logo {
+  width: 24px;
+  height: 24px;
+  margin-right: 2px;
+  padding-right: 12px;
+  border-right: 1px solid var(--md-line);
+  box-sizing: content-box;
+}
 .hgr-marka-iz {
   width: 20px;
   height: 20px;

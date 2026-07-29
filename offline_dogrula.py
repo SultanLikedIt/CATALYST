@@ -47,6 +47,13 @@ def main() -> int:
 
         sayfa.goto('file://' + DOSYA)
         sayfa.wait_for_timeout(3000)
+        # Açılış sahnesi (3D hangar) uygulamanın ÜSTÜNDE duruyor ve tıklamayı
+        # yutuyor; ESC ile geçilmezse sekmelere erişilemiyor.
+        sayfa.keyboard.press('Escape')
+        sayfa.wait_for_timeout(1800)
+
+        logo = sayfa.locator('.topbar-in > .thy-logo').count()
+        print(f'  THY amblemi     → {logo} adet (üst barda 1 olmalı)')
 
         bloklar: dict[str, int] = {}
         for ad in SEKMELER:
@@ -80,6 +87,8 @@ def main() -> int:
         sorun.append('dışarıya ağ isteği gidiyor — offline garantisi bozuk')
     if hatalar:
         sorun.append('konsol hatası var')
+    if logo != 1:
+        sorun.append('THY amblemi üst barda yok')
 
     if sorun:
         print('\nBAŞARISIZ: ' + ' · '.join(sorun))

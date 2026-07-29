@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect } from 'react';
 import { motion, LayoutGroup, AnimatePresence } from 'framer-motion';
 import { useStore, SEKMELER, type Sekme } from './store';
 import Sozluk from './Sozluk';
+import ThyLogo from '@/components/ThyLogo';
 import { K, B, PRM } from '@/data/payload';
 import { fmt, pct, vir } from '@/engine/format';
 import { sahne } from '@/design/motion';
@@ -61,20 +62,21 @@ function UstBar() {
       <div className="topbar-in">
         {/* Marka açılış sahnesine döner: sunumda "baştan alalım" demek tek tık.
             Düğme, çünkü gerçekten bir eylem — dekoratif başlık değil. */}
+        {/* THY amblemi üst barın EN SOLUNDA ve her ekranda: ürünün kimliği
+            Catalyst, sahibi Turkish Technic. Amblem düğmenin dışında duruyor
+            ki markaya basmak sahneyi yeniden oynatmasın. */}
+        <ThyLogo />
         <button
           className="brand brand-btn"
           onClick={girisAc}
           title="Açılış sahnesini yeniden oynat"
         >
           <MarkaIsaret />
-          <b>CATALYST</b> · 2033
+          <b>CATALYST</b>
         </button>
         {/* "SENTETİK / TEMSİLİ VERİ" rozeti kaldırıldı: aynı uyarı sayfa altındaki
             varsayım şeridinde zaten tam cümleyle duruyor, üst barda ikinci kez
             durunca nav kalabalıklaşıyordu. */}
-        <button className="dic-btn" onClick={() => bas()} title="Kısaltmalar sözlüğü">
-          📖 SÖZLÜK
-        </button>
         <LayoutGroup id="sekmeler">
           <div className="tabs" role="tablist">
             {SEKMELER.map((s) => (
@@ -97,6 +99,11 @@ function UstBar() {
             ))}
           </div>
         </LayoutGroup>
+        {/* Sözlük bir yardımcı, gezinti değil: sekmelerin solundayken nav'ın
+            parçası gibi okunuyordu. En sağda, kendi başına duruyor. */}
+        <button className="dic-btn" onClick={() => bas()} title="Kısaltmalar sözlüğü">
+          📖 SÖZLÜK
+        </button>
       </div>
     </nav>
   );

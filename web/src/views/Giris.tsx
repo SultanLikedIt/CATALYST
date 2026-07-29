@@ -17,6 +17,7 @@
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useStore } from '@/app/store';
+import ThyLogo from '@/components/ThyLogo';
 import { PERDELER, HUD, MOTOR_KOMPONENT, MOTOR_TOPLAM } from './hangar/hangarVeri';
 import { EGRI } from '@/design/motion';
 import '@/design/hangar.css';
@@ -173,6 +174,7 @@ export default function Giris() {
       {/* -------------------------------------------------------------- üst bar */}
       <header className="hgr-ust">
         <span className="hgr-marka">
+          <ThyLogo />
           <Isaret sinif="hgr-marka-iz" />
           <b>CATALYST</b>
           <i>Turkish Technic · komponent envanteri</i>

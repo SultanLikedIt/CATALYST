@@ -172,6 +172,21 @@ canvas {
   gap: 16px;
   flex-wrap: wrap;
 }
+/* THY amblemi — üst barın en solu. Sağındaki ince ayraç, markanın (THY) ürün
+   adından (CATALYST) ayrıldığı yeri gösteriyor: biri sahibi, diğeri işin adı. */
+.thy-logo {
+  width: 26px;
+  height: 26px;
+  flex: none;
+  display: block;
+}
+.topbar-in > .thy-logo {
+  margin-right: 2px;
+  padding-right: 14px;
+  border-right: 1px solid var(--ln-strong);
+  box-sizing: content-box;
+}
+
 .brand {
   display: flex;
   align-items: center;
