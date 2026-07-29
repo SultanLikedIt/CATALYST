@@ -280,7 +280,7 @@ export function alarmlar(
       metin:
         `${fmt(baz.kir)} kırmızı parça, ${fmt(baz.kirAog)} tanesi AOG kritik; kapatma ${mM(
           baz.kap / 1e6,
-        )}. Bunlar saha verisiyle doğrulanmış baz değerlerdir. Bir preset seçin ya da şok gülünün ` +
+        )}. Bunlar saha verisiyle doğrulanmış baz değerlerdir. Bir preset seçin ya da radar grafiğin ` +
         `bir eksenini çekin — ray dolmaya başlayacak.`,
       eylem: 'bir preset seç',
     });

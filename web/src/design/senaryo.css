@@ -143,7 +143,7 @@
 }
 .gul-satir {
   display: grid;
-  grid-template-columns: 66px minmax(0, 1fr) 56px;
+  grid-template-columns: 66px 26px minmax(0, 1fr) 56px;
   align-items: center;
   gap: 9px;
   padding: 5px 8px;
@@ -155,7 +155,11 @@
   background: var(--s-1);
   border-color: var(--ln);
 }
-.gul-satir.notr {
+/* Sıfır eksende YAZI soluklaşır ama düğmeler soluklaşmaz: krize başlamak için
+   basılacak düğme tam da o satırdaki ▴, en görünür olması gereken yer orası. */
+.gul-satir.notr b,
+.gul-satir.notr .aciklama,
+.gul-satir.notr .sayi {
   opacity: 0.5;
 }
 .gul-satir b {
@@ -169,6 +173,41 @@
   font-size: var(--fs-etiket);
   color: var(--tx-3);
   line-height: 1.35;
+}
+.gul-satir .gul-ok {
+  display: grid;
+  gap: 2px;
+}
+.gul-satir .gul-ok button {
+  width: 26px;
+  height: 16px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  color: var(--tx-3);
+  background: var(--s-0);
+  border: 1px solid var(--ln-strong);
+  border-radius: var(--r-xs);
+  cursor: pointer;
+  transition: all var(--hiz-hizli) var(--egri-standart);
+}
+.gul-satir .gul-ok button svg {
+  width: 11px;
+  height: 6.6px;
+  display: block;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.gul-satir .gul-ok button:hover:not(:disabled) {
+  border-color: var(--tk-red);
+  color: var(--tk-red);
+}
+.gul-satir .gul-ok button:disabled {
+  opacity: 0.3;
+  cursor: default;
 }
 .gul-satir .sayi {
   font-family: var(--tk-font-mono);

@@ -1,7 +1,35 @@
 import { defineConfig } from 'vitest/config';
+import type { Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
 import { viteSingleFile } from 'vite-plugin-singlefile';
 import { fileURLToPath, URL } from 'node:url';
+import { existsSync, renameSync } from 'node:fs';
+import { resolve } from 'node:path';
+
+/**
+ * Tek dosya çıktısını anlamlı bir adla bırakır.
+ *
+ * Teslim edilen şey tek bir dosya olduğu için adı da tek ipucu: "index.html"
+ * indirilenler klasöründe kaybolur, "Catalyst.html" kaybolmaz.
+ *
+ * Yeniden adlandırma `generateBundle` içinde DEĞİL diskte yapılıyor: Vite 8'in
+ * paketleyicisi (Rolldown) bundle nesnesine yazmayı yok sayıyor ve dosya
+ * tamamen düşüyor (denendi, çıktı klasörü boş kaldı).
+ */
+function tekDosyaAdi(ad: string): Plugin {
+  let cikti = '';
+  return {
+    name: 'tek-dosya-adi',
+    enforce: 'post',
+    configResolved(c) {
+      cikti = resolve(c.root, c.build.outDir);
+    },
+    writeBundle() {
+      const eski = resolve(cikti, 'index.html');
+      if (existsSync(eski)) renameSync(eski, resolve(cikti, ad));
+    },
+  };
+}
 
 /**
  * İki build modu:
@@ -12,7 +40,10 @@ import { fileURLToPath, URL } from 'node:url';
  */
 export default defineConfig(({ mode }) => ({
   base: './',
-  plugins: [react(), ...(mode === 'singlefile' ? [viteSingleFile()] : [])],
+  plugins: [
+    react(),
+    ...(mode === 'singlefile' ? [viteSingleFile(), tekDosyaAdi('Catalyst.html')] : []),
+  ],
   resolve: {
     alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
   },

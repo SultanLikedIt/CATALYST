@@ -25,9 +25,38 @@ core.py  ─(build_dashboard.py)→  web/src/data/payload.json  ─→  web/  (R
   sayı üretmez; hepsi bu payload'dan ya da payload'ı birebir tekrarlayan TypeScript çekirdeğinden gelir.
 - **`web/`** — React + TypeScript + Vite uygulaması. Canlı ürün. Ayrıntı: [`web/README.md`](web/README.md).
 
-## Çalıştırma
+## Teslim: tek dosya, kurulum yok, internet yok
 
-**Web uygulaması** (canlı ürün):
+Sunum ve saha kullanımı için uygulama **tek bir HTML dosyasına** paketlenir:
+
+```bash
+cd web && npm install && npm run build:tek-dosya
+# → web/dist-tek-dosya/Catalyst.html  (~2,4 MB)
+```
+
+Bu dosya kendi kendine yeter: JavaScript, CSS, 5.000 parçalık veri seti, 3D dünya konturu ve
+grafik kütüphanelerinin tamamı içine gömülüdür. **Çift tıklanır, tarayıcıda açılır.** Kurulum,
+sunucu, ağ bağlantısı ve yönetici hakkı gerekmez; şirket bilgisayarına kopyalanıp çalıştırılabilir.
+
+Paketi her yeniden ürettiğinizde doğrulayın:
+
+```bash
+uv run --with playwright python offline_dogrula.py
+```
+
+Başsız tarayıcıyı `file://` ile açar, beş sekmeyi gezer, 3D kürenin çizildiğini kontrol eder ve
+**`file://` dışına çıkan her isteği sayar** — asıl offline garantisi bu sayının sıfır olmasıdır.
+Sorun varsa sıfırdan farklı çıkış kodu döner. Son çalıştırma: 5/5 sekme, canvas 1500×896,
+0 dış istek, 0 konsol hatası.
+
+İki not:
+
+- **Yerel diske kopyalayın.** Ağ paylaşımından (`\\sunucu\...`) doğrudan açılırsa bazı kurumsal
+  tarayıcı politikaları dosyayı "İnternet bölgesi" sayıp betikleri kısıtlayabilir.
+- **WebGL kapalıysa** 3D katman açılmaz; uygulama bunu yakalar ve aynı sayıları düz liste olarak
+  gösterir — sayfanın geri kalanı çalışmaya devam eder.
+
+## Geliştirme
 
 ```bash
 cd web
@@ -84,6 +113,7 @@ core.py                 tek doğruluk kaynağı (hesap çekirdeği)
 build_dashboard.py      core.py → web/src/data/payload.json
 train_demand_model.py   derin öğrenme hattı (TensorFlow)
 data_explorer.py        iç veri gezgini (PyQt6)
+offline_dogrula.py      tek dosya teslim paketini file:// üstünden sınar
 pyproject.toml, uv.lock Python bağımlılıkları
 
 web/                    React + TypeScript + Vite uygulaması (canlı ürün)

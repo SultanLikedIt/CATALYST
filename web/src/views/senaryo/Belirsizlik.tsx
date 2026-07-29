@@ -186,7 +186,7 @@ export default function Belirsizlik({
     <>
       <Izgara tip="g21">
         <Kart
-          baslik={<h3>Açıkta kalan parça sayısının dağılımı</h3>}
+          baslik={<h3>Açıkta Kalan Parça Dağılımı</h3>}
           sag={
             <span className="ctl" style={{ margin: 0, gap: 5 }}>
               <span className="note">aralık</span>
@@ -197,7 +197,7 @@ export default function Belirsizlik({
               ))}
             </span>
           }
-          ipucu='Eğri, "en fazla şu kadar parça açıkta kalır" olasılığını verir. Dikey kılavuzlar seçili aralığın iki ucunu, nokta orta değeri gösterir. Sabitlenen senaryolar soluk çizgi olarak arkada kalır.'
+          ipucu='Eğri, "en fazla şu kadar parça açıkta kalır" olasılığını verir. Dikey kılavuzlar seçili aralığın uçlarını, nokta orta değeri gösterir.'
         >
           <Grafik cfg={cdfCfg} h={230} />
           <div className="ctl" style={{ margin: '9px 0 0' }}>
@@ -218,8 +218,8 @@ export default function Belirsizlik({
         </Kart>
 
         <Kart
-          baslik="Ne kadarına hazırlıklı olmalıyız?"
-          ipucu="Ortalama bütçe planlaması içindir; kötü giden geleceklerin ortalaması ise tampon içindir. Aradaki fark belirsizliğin fiyatıdır."
+          baslik="Hazırlık Seviyesi"
+          ipucu="Ortalama bütçe için, kötü geleceklerin ortalaması tampon için. Aradaki fark belirsizliğin fiyatı."
         >
           <div className="blk">
             <div className="bkut">
@@ -273,18 +273,17 @@ export default function Belirsizlik({
 
       <Izgara tip="g21" stil={{ marginTop: 12 }}>
         <Kart
-          baslik="Senaryoların karşılaştırması"
-          ipucu="Çubuk seçili aralığı, dikey işaret orta değeri gösterir. Bir senaryoya tıklayınca ayarlar ona geçer."
+          baslik="Senaryo Karşılaştırması"
+          ipucu="Çubuk seçili aralığı, dikey işaret orta değeri gösterir. Bir senaryoya tıklayın."
         >
           <Grafik cfg={kars.cfg} h={215} onSec={(i) => onPreset(kars.ks[i])} />
         </Kart>
         <Kart
-          baslik="Doğrulama: aynı sayı iki bağımsız yoldan"
+          baslik="Doğrulama"
           ipucu={
             <>
-              Sol sütun tarayıcıdaki kapalı formül, sağ sütun {fmt(D.mc.trials)} rastgele deneme
-              (build sırasında, ayrı kodla koşuldu). İkisi aynı yerde buluşuyor — kodda hata olsaydı
-              buluşmazlardı.
+              Sol sütun kapalı formül, sağ sütun {fmt(D.mc.trials)} rastgele deneme (ayrı kodla).
+              İkisi aynı yerde buluşuyor.
             </>
           }
         >
