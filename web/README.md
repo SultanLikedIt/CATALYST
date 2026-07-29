@@ -7,8 +7,8 @@ taban — 3D harita, sahne animasyonları ve yeni ekranlar buraya eklenir.
 ```bash
 npm install
 npm run dev              # http://localhost:5173
-npm run build            # dist/          — kod bölünmüş statik site
-npm run build:tek-dosya  # dist-tek-dosya/index.html — TEK DOSYA, offline (jüri demosu)
+npm run build            # dist/          — kod bölünmüş statik site (web sunucusu için)
+npm run build:tek-dosya  # dist-tek-dosya/Catalyst.html — TEK DOSYA, çift tıkla açılır, offline
 npm test                 # parite + geometri testleri (85 kontrol)
 npm run tip              # tsc --noEmit
 ```
@@ -22,7 +22,21 @@ npm run tip              # tsc --noEmit
 | **Chart.js + react-chartjs-2** | 25 grafiğin yapılandırması tek dosyalık sürümden birebir taşınabildi — görsel davranış taşımada değişmedi |
 | **zustand** | Ekranlar arası köprüler (Karar Merkezi → Watchlist → Harita) ve senaryo parametreleri tek mağazada; prop zinciri yok |
 | **three + R3F + drei** | Kurulu ve ayrı chunk'ta bekliyor: harita 3D'ye geçtiğinde `views/harita/` altındaki render katmanı değişir |
-| **vite-plugin-singlefile** | "internet gerektirmez, çift tıkla açılır" offline demo garantisi (`npm run build:tek-dosya`) |
+| **vite-plugin-singlefile** | "internet gerektirmez, çift tıkla açılır" teslim garantisi (`npm run build:tek-dosya`) |
+
+### Tek dosya paketi
+
+`npm run build:tek-dosya` her şeyi — JS, CSS, payload, dünya konturu, three.js, Chart.js — tek bir
+`Catalyst.html` içine gömer. Kurulum, sunucu ve ağ gerekmez.
+
+Tek dosya modunda kod bölme KAPALI olmak zorunda: `lazy(() => import(…))` ile yüklenen sekmeler
+ayrı chunk'a çıkarsa `file://` üstünde CORS'a takılır ve harita/senaryo sekmeleri açılmaz.
+`viteSingleFile()` bunu kendisi hallediyor (dinamik importları tek pakete alıyor) — başsız
+tarayıcıda `file://` ile doğrulandı: 3D küre çiziliyor, dışarıya sıfır istek gidiyor.
+
+Çıktı adı `tekDosyaAdi()` eklentisiyle `index.html`'den `Catalyst.html`'e çevriliyor. Yeniden
+adlandırma diskte (`writeBundle`) yapılıyor; Vite 8'in paketleyicisi Rolldown, `generateBundle`
+içinde bundle nesnesine yazmayı yok sayıp dosyayı tamamen düşürüyor.
 
 ## Mimari
 

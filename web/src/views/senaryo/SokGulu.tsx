@@ -96,6 +96,19 @@ export const EKSENLER: Eksen[] = [
   },
 ];
 
+/**
+ * Adım oku. Metin karakteri (▴ ▾) DEĞİL çizim: o karakterler 9 px'te noktaya
+ * dönüşüyor ve boyu yazı tipine göre değişiyor — ölçüldü. Çizgi kalınlığı
+ * burada sabit, düğme küçülse de ok okunur kalıyor.
+ */
+function Ok({ yon }: { yon: 'ust' | 'alt' }) {
+  return (
+    <svg viewBox="0 0 10 6" aria-hidden="true">
+      <path d={yon === 'ust' ? 'M1.4 4.6 L5 1.4 L8.6 4.6' : 'M1.4 1.4 L5 4.6 L8.6 1.4'} />
+    </svg>
+  );
+}
+
 /* ------------------------------------------------------------------ geometri */
 
 /* viewBox gülün doğal piksel boyuna EŞİT (340): SVG içinde CSS font-size ve
@@ -224,7 +237,7 @@ export default function SokGulu({
           className="gul"
           viewBox={`0 0 ${KUTU} ${KUTU}`}
           role="group"
-          aria-label="Şok gülü — yedi kriz ekseni"
+          aria-label="Radar Grafik Dağılımı — yedi kriz ekseni"
         >
           {HALKA.map((h) => (
             <circle
@@ -312,6 +325,34 @@ export default function SokGulu({
                 onPointerLeave={() => setVurgu(null)}
               >
                 <b>{e.ad}</b>
+                {/* Adım düğmeleri: poligon tutamağını sürüklemek fareyle bile
+                    zordu (6 px'lik daire), dokunmatikte iyice. Aynı ekseni
+                    buradan tek tıkla e.adim kadar oynatmak mümkün — sürükleme
+                    de yerinde duruyor, ikisi aynı `onDegis`e yazıyor. */}
+                <span className="gul-ok">
+                  <button
+                    type="button"
+                    aria-label={`${e.tam} artır`}
+                    title={`${e.tam}: +${e.adim}`}
+                    disabled={v >= e.max}
+                    onClick={() =>
+                      onDegis({ [e.k]: Math.min(e.max, v + e.adim) } as Partial<SenaryoCfg>)
+                    }
+                  >
+                    <Ok yon="ust" />
+                  </button>
+                  <button
+                    type="button"
+                    aria-label={`${e.tam} azalt`}
+                    title={`${e.tam}: −${e.adim}`}
+                    disabled={v <= 0}
+                    onClick={() =>
+                      onDegis({ [e.k]: Math.max(0, v - e.adim) } as Partial<SenaryoCfg>)
+                    }
+                  >
+                    <Ok yon="alt" />
+                  </button>
+                </span>
                 <span className="aciklama">{e.ipucu}</span>
                 <span className="sayi">{v ? e.bicim(v) : '—'}</span>
               </div>

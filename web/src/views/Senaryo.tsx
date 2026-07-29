@@ -456,14 +456,18 @@ export default function Senaryo() {
     [th],
   );
 
-  const notMetni = preset ? preset.not : 'Özel senaryo, gül üzerinden tanımlandı.';
+  const notMetni = preset ? preset.not : 'Özel senaryo, radar grafik üzerinden tanımlandı.';
   const maksKir = Math.max(1, tk.zirveKir);
+  /* Kur / havuz / atölye şokları parayı ve kanalı değiştirir ama TTS'e de TTR'ye
+     de dokunmaz: kırmızı sayısı hiç kımıldamaz. O senaryolarda "zirve ayı" diye
+     bir şey yok — işaretlemek yanıltıcı olurdu. */
+  const krizVar = tk.zirveKir > tk.bazKir;
 
   return (
     <>
       <Bolum
-        baslik="Kriz simülatörü: şokun şekli ve süresi"
-        aciklama="Her kriz ya stoğun dayanma süresini kısaltır ya da tedarik süresini uzatır. Gül krizin şeklini, arazi zamana yayılışını gösterir."
+        baslik="Kriz Simülatörü"
+        aciklama="Her kriz ya stoğun dayanma süresini kısaltır ya da tedarik süresini uzatır."
       />
 
       {/* ---------------------------------------------------------- SEN-01 */}
@@ -471,7 +475,7 @@ export default function Senaryo() {
         <Kart sinif="flush" stil={{ padding: 0, overflow: 'hidden' }} baslik={undefined}>
           <div id="sen-arazi" style={{ padding: '16px 18px 0' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-              <h3>Kriz arazisi</h3>
+              <h3>Kriz Arazisi</h3>
               <span className="ctl" style={{ margin: 0, marginLeft: 'auto' }}>
                 <Cip acik={mod === 'kategori'} onClick={() => setMod('kategori')}>
                   kategori × ay
@@ -483,8 +487,8 @@ export default function Senaryo() {
             </div>
             <div className="hint">
               {mod === 'kategori'
-                ? 'Yükseklik = o ayda o kategoride kırmızıya düşen parça. Ön sıra en kötü kategori; çubuğa tıklayınca takvim o aya gider.'
-                : 'Yükseklik = o ayda o marj kovasındaki parça. Öndeki dört kova negatif marj — kırmızı listenin kendisi.'}
+                ? 'Yükseklik = o ayda o kategoride kırmızıya düşen parça sayısı. Çubuğa tıklayınca takvim o aya gider.'
+                : 'Yükseklik = o ayda o marj kovasındaki parça sayısı. Öndeki dört kova negatif marj — kırmızı liste.'}
             </div>
           </div>
 
@@ -592,7 +596,9 @@ export default function Senaryo() {
 
         <Kart
           baslik={
-            <h3>Şok gülü{degismis && <span style={{ color: C.dim }}> · değiştirilmiş</span>}</h3>
+            <h3>
+              Radar Grafik Dağılımı{degismis && <span style={{ color: C.dim }}> · değiştirilmiş</span>}
+            </h3>
           }
           sag={
             <span className="ctl" style={{ margin: 0 }}>
@@ -658,7 +664,7 @@ export default function Senaryo() {
             />
           </div>
           <div className="hint" style={{ marginTop: 0 }}>
-            Filo ucu gülde yok: bir kriz şoku değil, 2033 varsayımı — takvimde de ölçeklenmez.
+            Kriz şoku değil, 2033 varsayımı: radar grafikte yok, takvimde ölçeklenmez.
           </div>
         </Kart>
       </Izgara>
@@ -666,12 +672,12 @@ export default function Senaryo() {
       {/* ---------------------------------------------------------- SEN-02 */}
       <div id="sen-takvim" style={{ scrollMarginTop: 70 }}>
         <Bolum
-          baslik="Kriz takvimi: şok anlık değil, zamana yayılır"
+          baslik="Kriz Takvimi"
           aciklama="Tırmanma → plato → toparlanma. Bir aya tıklayın, sayfanın tamamı o aya döner."
         />
         <Yigin>
           <Kart
-            baslik="Şiddet profili ve ay ay kırmızı"
+            baslik="Şiddet Profili"
             sag={
               <span className="ctl" style={{ margin: 0 }}>
                 {Object.entries(PROFILLER).map(([k, p]) => (
@@ -681,17 +687,29 @@ export default function Senaryo() {
                 ))}
               </span>
             }
-            ipucu={profil.not}
+            ipucu={
+              krizVar
+                ? `Yükseklik ve renk = o ayki kırmızı parça sayısı, zirveye oranla. Zirve ${fmt(tk.zirveKir)} parça, ▼ ile işaretli.`
+                : `Yükseklik ve renk = o ayki kırmızı parça sayısı, zirveye oranla. Bu senaryo kırmızıyı oynatmıyor: her ay ${fmt(tk.bazKir)}, o yüzden şerit dolu ve düz.`
+            }
           >
             <div className="ktak">
               {tk.aylar.map((a) => (
                 <button
                   key={a.ay}
                   type="button"
-                  className={(a.ay === ay ? 'on ' : '') + (a.ay === tk.duvarAy ? 'duvar' : '')}
+                  className={
+                    (a.ay === ay ? 'on ' : '') + (krizVar && a.ay === tk.duvarAy ? 'duvar' : '')
+                  }
                   title={`${a.ay === 0 ? 'kriz öncesi' : a.ay + '. ay'} · ${fmt(a.r.kir)} kırmızı · şiddet %${Math.round(100 * a.w)}`}
                   onClick={() => aySec(a.ay)}
                 >
+                  {/* Ölçek ZİRVEYE göre normalize: en yüksek ay tanım gereği
+                      %100 ve rampanın kırmızı ucunda. Kur / havuz / atölye
+                      şokları TTS'e de TTR'ye de dokunmadığından o senaryolarda
+                      her ay bazla aynı çıkar (zirve = baz) ve şerit dolu, düz
+                      bir blok olur — kusur değil, "bu kriz kırmızıyı oynatmıyor"
+                      demenin şeklidir. Kart ipucu bunu yazıyor. */}
                   <i
                     style={{
                       height: Math.max(2, (100 * a.r.kir) / maksKir) + '%',
@@ -720,15 +738,19 @@ export default function Senaryo() {
                   </>
                 }
               />
+              {/* Kırmızı hiç oynamıyorsa duvar da yok: "0. ay" yazmak uyduruk
+                  bir zirve icat ediyordu. */}
               <Stat
                 l="Duvara çarpma"
-                v={tk.duvarAy + '. ay'}
+                v={krizVar ? tk.duvarAy + '. ay' : '—'}
                 d={
-                  tk.toparlanmaAy === -1
-                    ? 'takvim sonunda baz seviyeye dönmüyor'
-                    : `${tk.toparlanmaAy}. ayda baz seviyeye dönüyor`
+                  !krizVar
+                    ? 'bu senaryo kırmızıyı oynatmıyor'
+                    : tk.toparlanmaAy === -1
+                      ? 'takvim sonunda baz seviyeye dönmüyor'
+                      : `${tk.toparlanmaAy}. ayda baz seviyeye dönüyor`
                 }
-                ton={tk.toparlanmaAy === -1 ? 'red' : ''}
+                ton={krizVar && tk.toparlanmaAy === -1 ? 'red' : ''}
               />
               <Stat
                 l="Zirve açık pozisyon"
@@ -739,18 +761,14 @@ export default function Senaryo() {
               <Stat l="Kriz yükü" v={fmt(tk.kirmiziAy)} d="parça·ay — süre de maliyettir" />
             </div>
             <div className="hint" style={{ marginTop: 11, marginBottom: 0 }}>
-              Kümülatif dolar raporlanmaz: kapatma maliyeti bir <b>stok</b> büyüklüğü, akış değil —
-              aylar boyunca toplansa aynı eksik defalarca sayılırdı.
+              Kapatma maliyeti bir <b>stok</b> büyüklüğü, akış değil: kümülatif dolar raporlanmaz.
             </div>
           </Kart>
         </Yigin>
       </div>
 
       {/* ---------------------------------------------------------- SEN-03 */}
-      <Bolum
-        baslik={`Seçili ayın etkisi: ${ay === 0 ? 'kriz öncesi' : ay + '. ay'}`}
-        aciklama="Dört sayı da baz durumla farkıyla birlikte."
-      />
+      <Bolum baslik={`Seçili Ay: ${ay === 0 ? 'Kriz Öncesi' : ay + '. Ay'}`} />
       <Izgara tip="g4">
         <Stat
           l="Kırmızı parça"
@@ -797,8 +815,8 @@ export default function Senaryo() {
 
       {/* ---------------------------------------------------------- SEN-04 */}
       <Bolum
-        baslik="Kriz alarmları"
-        aciklama="Bir alarm bir eşik aşımıdır: koşulu sağlanmayan alarm listeye girmez."
+        baslik="Kriz Alarmları"
+        aciklama="Alarm bir eşik aşımıdır: koşulu sağlanmayan listeye girmez."
       />
       <Yigin>
         <div className="alm">
@@ -833,22 +851,21 @@ export default function Senaryo() {
           ))}
         </div>
         <div className="hint" style={{ marginTop: 10 }}>
-          <b>Dürüstlük notu.</b> Cümle kalıpları, eşikler ve güven yüzdeleri kodda sabittir;
-          içindeki <b>sayıların hepsi</b> senaryo motorundan canlı gelir. Ray bir dil modeli çıktısı
-          değildir.
+          <b>Dürüstlük notu.</b> Cümle kalıpları kodda sabit, <b>sayıların hepsi</b> motordan canlı
+          gelir — dil modeli çıktısı değil.
         </div>
       </Yigin>
 
       {/* ---------------------------------------------------------- SEN-05 */}
       <Izgara tip="g21" stil={{ marginTop: 14 }}>
         <Kart
-          baslik="Takvim boyunca kırmızı ve fatura"
-          ipucu="Sol eksen kırmızı parça, sağ eksen kapatma maliyeti. Noktaya tıklayınca seçili ay değişir."
+          baslik="Kırmızı ve Fatura"
+          ipucu="Sol eksen kırmızı parça, sağ eksen kapatma maliyeti. Noktaya tıklayın."
         >
           <Grafik cfg={takvimCfg} h={250} onSec={(i) => aySec(i)} />
         </Kart>
         <Kart
-          baslik="Kritiklik sınıfına göre"
+          baslik="Kritiklik Sınıfı"
           ipucu="Seçili ay ile baz durum yan yana. AOG kritik sütunundaki her artış 'yerde uçak' demek."
         >
           <Grafik cfg={krCfg} h={250} />
@@ -859,7 +876,7 @@ export default function Senaryo() {
       <div id="sen-dagilim" style={{ scrollMarginTop: 70 }}>
         <Yigin stil={{ marginTop: 12 }}>
           <Kart
-            baslik="Dayanıklılık dağılımı"
+            baslik="Dayanıklılık Dağılımı"
             sag={
               <span className="ctl" style={{ margin: 0 }}>
                 <Cip acik={dagMod === 'marj'} onClick={() => setDagMod('marj')}>
@@ -878,8 +895,8 @@ export default function Senaryo() {
                 </>
               ) : (
                 <>
-                  Dayanma süresi = stok / talep, <b>tanım gereği tedarik süresini görmez</b>:
-                  lojistik krizinde bu dağılım kımıldamaz ama parçalar kırmızıya düşer.
+                  Dayanma süresi = stok / talep; <b>tedarik süresini görmez</b>. Lojistik krizinde
+                  bu dağılım kımıldamaz ama parçalar kırmızıya düşer.
                 </>
               )
             }
@@ -892,8 +909,8 @@ export default function Senaryo() {
       {/* ---------------------------------------------------------- SEN-07 */}
       <div id="sen-belirsizlik" style={{ scrollMarginTop: 70 }}>
         <Bolum
-          baslik="Belirsizlik denemeleri: plan kaç farklı gelecekte tutuyor?"
-          aciklama="Talep kesin bir sayı değil, bir dağılım: cevap tek bir sayı değil, bir aralık."
+          baslik="Belirsizlik Denemeleri"
+          aciklama="Talep kesin bir sayı değil, bir dağılım: cevap da tek sayı değil, aralık."
         />
         <Belirsizlik cfg={cfg} preset={sc.preset} onPreset={presetSec} />
       </div>
@@ -901,23 +918,22 @@ export default function Senaryo() {
       {/* ---------------------------------------------------------- SEN-08 */}
       <Izgara tip="g2" stil={{ marginTop: 14 }}>
         <Kart
-          baslik="Duyarlılık: seçili senaryonun etrafında ne oynatır?"
+          baslik="Duyarlılık"
           ipucu={
             <>
-              Altı etken, <b>baz duruma göre değil seçili senaryonun etrafında</b> iki uca
-              çekiliyor: kriz derinleştikçe baskın etken değişir.
+              Altı etken <b>seçili senaryonun etrafında</b> iki uca çekiliyor: kriz derinleştikçe
+              baskın etken değişir.
             </>
           }
         >
           <Grafik cfg={tornadoCfg} h={220} />
         </Kart>
         <Kart
-          baslik="Kısıtlı bütçeyle önce hangi parça alınır?"
+          baslik="Bütçe Önceliği"
           ipucu={
             <>
-              {fmt(th.toplamAdim)} alım adımı "para başına düşen risk azalımı"na göre sıralanıyor.
-              Tamamı {mM(th.toplamButce)}, ama kazanımın %80'i <b>{mM(th.butce80)}</b> ile doluyor.
-              Gri kesikli çizgi build zamanı referans eğrisi.
+              {fmt(th.toplamAdim)} alım adımı para başına risk azalımına göre sıralı. Tamamı{' '}
+              {mM(th.toplamButce)}, ama kazanımın %80'i <b>{mM(th.butce80)}</b> ile doluyor.
             </>
           }
         >
@@ -927,7 +943,7 @@ export default function Senaryo() {
 
       <Yigin stil={{ marginTop: 4 }}>
         <Kart
-          baslik="Verim sırasında ilk 10 parça"
+          baslik="Verim Sırasında İlk 10"
           ipucu="Verim sırasında ilk kez görülen parçalar. Satıra tıklayınca detay açılır."
         >
           <div className="tw" style={{ maxHeight: 300 }}>
@@ -982,11 +998,7 @@ export default function Senaryo() {
         <Yigin stil={{ marginTop: 14 }}>
           <Kart
             stil={{ borderColor: 'var(--st-teal-line)' }}
-            baslik={
-              <h3 style={{ color: C.teal }}>
-                Kabiliyet yatırımı: öncelik sırasına göre {D.roi.id.length} aday
-              </h3>
-            }
+            baslik={<h3 style={{ color: C.teal }}>Kabiliyet Yatırımı</h3>}
             ipucu={
               <>
                 {K.risk_listesi} parça kritik ve iç tamiri yok, dış tamire yılda{' '}
@@ -994,13 +1006,13 @@ export default function Senaryo() {
                 <b style={{ color: C.teal }}>
                   {mM(K.kab_tasarruf)} tasarruf + {mM(K.kab_sermaye)} serbesti
                 </b>{' '}
-                getirir. Bu tablo senaryodan bağımsızdır — bir şok ekseni değil bir yatırım kararı.{' '}
-                <Rozet tip="warn">ÜÇLÜ</Rozet> = kritik + tamirsiz + geçmişsiz.{' '}
+                getirir. Senaryodan bağımsız. <Rozet tip="warn">ÜÇLÜ</Rozet> = kritik + tamirsiz +
+                geçmişsiz.{' '}
                 <Cip
                   onClick={() => watchAc({ flag: 'R547' })}
                   stil={{ padding: '1px 9px', fontSize: '.66rem' }}
                 >
-                  tam listeyi watchlist'te aç
+                  tam listeyi aç
                 </Cip>
               </>
             }
@@ -1062,19 +1074,16 @@ export default function Senaryo() {
       {/* --------------------------------------------------------- motor notu */}
       <Yigin stil={{ marginTop: 14 }}>
         <div className="motor-not">
-          <b>Motor.</b> Süre şoku kanal tipine göre ayrışır:{' '}
-          <span className="mono">
-            g = gün · (1+icKap/100 | iç) · (1+l/100 | disOnly değilse) + gümrük (dış)
-          </span>
-          . Kırmızı testi <span className="mono">TTS = SVC/λ&apos; &lt; TTR&apos; + tampon</span>,
-          2033 planı <span className="mono">MIN&apos; = ⌈μ&apos;⌉ + Poisson emniyet stoğu</span>.
-          Kur yalnız $ kalemleri ölçekler, havuz kaybı adetlere dokunmaz.{' '}
+          <b>Motor.</b> Kırmızı testi{' '}
+          <span className="mono">TTS = SVC/λ&apos; &lt; TTR&apos; + tampon</span>, 2033 planı{' '}
+          <span className="mono">MIN&apos; = ⌈μ&apos;⌉ + Poisson emniyet stoğu</span>. Kur yalnız $
+          kalemleri ölçekler, havuz kaybı adetlere dokunmaz.{' '}
           <b>
             Nötr ayarda motor baz durumu birebir verir: {fmt(BAZ.kir)} kırmızı, {fmt(BAZ.kirAog)}{' '}
-            AOG kritik, {fmt(K.siparissiz)} siparişsiz.
+            AOG kritik.
           </b>{' '}
           BER eşiği <span className="mono">{vir(D.params.ber_esigi)}</span>, alarm tamponu{' '}
-          {fmt(params.tampon)} gün — ikisi de Öngörü sekmesindeki parametre panelinden ayarlanır.
+          {fmt(params.tampon)} gün — Öngörü sekmesinden ayarlanır.
         </div>
       </Yigin>
     </>
