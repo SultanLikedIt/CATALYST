@@ -74,6 +74,8 @@ interface Durum {
   /** geçiş yönü: +1 sağa, −1 sola — sahne animasyonu bunu kullanır */
   yon: number;
   sozlukAcik: boolean;
+  /** açılış sahnesi (dijital hangar) ekranda mı — uygulama onun arkasında durur */
+  giris: boolean;
 
   watch: WatchFiltre;
   siralama: { k: SiralamaAnahtar; artan: boolean };
@@ -98,6 +100,10 @@ interface Durum {
 
   git: (s: Sekme) => void;
   sozlugeBas: (a?: boolean) => void;
+  /** kapıdan geç: açılış sahnesi kapanır, uygulama görünür */
+  girisKapat: () => void;
+  /** açılış sahnesini yeniden oynat (üst bardaki markaya tıklayınca) */
+  girisAc: () => void;
 
   /** Karar Merkezi → Watchlist: kanala/pencereye süzülü aç */
   watchAc: (f: Partial<Pick<WatchFiltre, 'kanal' | 'pencere'>> & { flag?: FlagKey }) => void;
@@ -132,6 +138,7 @@ export const useStore = create<Durum>((set, get) => ({
   sekme: 'karar',
   yon: 1,
   sozlukAcik: false,
+  giris: true,
 
   watch: { ...BOS_FILTRE, flags: new Set() },
   siralama: { k: 'risk', artan: false },
@@ -155,6 +162,9 @@ export const useStore = create<Durum>((set, get) => ({
   },
 
   sozlugeBas: (a) => set((st) => ({ sozlukAcik: a ?? !st.sozlukAcik })),
+
+  girisKapat: () => set({ giris: false }),
+  girisAc: () => set({ giris: true }),
 
   watchAc: (f) => {
     const flags = new Set<FlagKey>();

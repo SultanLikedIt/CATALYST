@@ -34,7 +34,7 @@ cd web
 npm install
 npm run dev              # geliştirme sunucusu
 npm run build:tek-dosya  # dist-tek-dosya/index.html — offline tek dosya (jüri demosu)
-npm test                 # 44 kontrol: 34 sayı paritesi + 10 küre geometrisi
+npm test                 # 113 kontrol: 57 motor paritesi + 9 küre + 19 arazi + 28 hangar geometrisi
 ```
 
 **Veri hattı** (payload'ı çekirdekten yeniden üret — yalnız CSV/formül değişirse gerekir):
@@ -48,11 +48,12 @@ uv run build_dashboard.py   # veri/eski/*.csv → web/src/data/payload.json
 
 | Sekme | İçerik |
 |---|---|
+| **GİRİŞ** — dijital hangar (sekme değil, kapı) | Uygulama açılınca çalan beş perdelik tek çekim 3D sahne. Gece hangarı, park hâlindeki THY uçağı, kapının ötesinde inip kalkan trafik; kamera kesintisiz olarak kapıdan çıkıp piste bakar, geri dönüp **motora yandan yanaşır** — kaportanın kesilmiş yüzünden fan · kompresör kademeleri · yanan yanma odası · türbin görünür. Son perdede parçalar dağılıp CODE ekranındaki karar küresine dönüşür. Uçak/motor dâhil her şey prosedürel geometridir (hazır 3D model yok — tek dosya offline garantisi). Motorun üstündeki sekiz rozet **payload'daki sekiz ATA motor kategorisidir** (ATA 71–80): 1.552 PN · 55 kırmızı · $43,2M bağlı sermaye; her rozet kendi fiziksel istasyonunda (yanma odası rozeti yanma odasının hizasında), tıklayınca kategori künyesi açılır. Üst bardaki **3D SERBEST** anahtarı kamerayı kullanıcıya verir: sürükle döndür, tekerlek yakınlaştır. `Enter`/`ESC` ile geç, `← →` ile perde değiştir; üst bardaki markaya basınca yeniden oynar |
 | **CODE** — Component Decision Engine (açılış) | Kararın verildiği tek yüzey, koyu operasyon konsolu. **Çekirdek (3D):** 5.000 parçanın operasyon küresi — her nokta gerçek bir parça, rengi karar motorunun kanalı, kuzey kutbu en yüksek risk; küreye tıklamak parçayı karar konsoluna düşürür. **İçgörü akışı:** 12 bulgu, her biri bir ekrana köprülü (cümle sabit, sayı canlı). **Karar konsolu:** dört kuyruk + önerilen aksiyon kartı (yetmeme riski öncesi/sonrası) + Onayla/Ata/Haritada incele/Talep/Yoksay + aksiyon merdiveni. **Kısa vade:** kanal dağılımı (havuz 694 / tamir 641 / satın alma 217 / izle 3.448), sipariş penceresi alarmı (42), planlama ufku, transfer önerileri. **Uzun vade:** 2033 yol haritası, faz kapıları metrik |
 | **Watchlist** | 5.000 PN risk skoru sıralı; filtreler (kırmızı, siparişsiz, 547, BER, phase-out, yeni nesil, hurda anomalisi 159, pool bağımlı 150); PN detayında künye + risk skoru, 2033 ihtiyaç bandı, önerilen aksiyon kartı (salt-okunur — karar CODE konsolunda verilir), TTS/TTR, aksiyon merdiveni, canlı stok yeterlilik eğrisi ve çeyreklik tahmin profili |
 | **Öngörü & AI** | Q3 mevsimselliği, ABC×XYZ segmentasyon matrisi, hurda kategori kırılımı + anomali dedektörü (159 PN), geriye dönük test, **model bazında yıllık talep 2025→2033** (14 model), talep göçü, kategori ayrışması, tahmin gezgini (PN bazlı) |
 | **Harita** — tam ekran 3D küre | Ekranın tamamını kaplayan operasyon küresi; paneller cam HUD. Kıtalar hazır dokudan değil, aynı 110m kontur verisinden çalışma anında noktalanarak üretilir (internetsiz). Rota büyük çember yaylarında **akan parçacıklarla** çizilir — parçacık hızı kanal tipinden gelir ("hangi yol hızlı" hareketten okunur). Kanal satırına tıkla, küre o yola uçsun. Sütun metriği seçilebilir (uçak · stok · talep · kırmızı · MIN 2033 · dışa bağımlı), kritiklik süzgeci, 2033 karşılaştırma, kriz katmanı (Senaryo'ya bağlı) |
-| **Senaryo** | Kriz simülatörü (motor krizi, pandemi, OEM gecikmesi, lojistik…) → 5.000 PN canlı yeniden hesap; model parametre paneli (ağırlıklar, BER eşiği, alarm tamponu); **belirsizlik denemeleri** (kümülatif olasılık eğrisi, %80/%90/%95 aralık, senaryo sabitleme, beklenen fatura ↔ kötü giden %10, belirsizliğin kaynağı, altı senaryo karşılaştırması, formül↔deneme doğrulaması); canlı dayanıklılık dağılımı; duyarlılık; kaynak önceliklendirme; kabiliyet ROI |
+| **Senaryo** — kriz simülatörü | **Şok gülü:** 7 eksenli radar kontrol yüzeyi (talep · TAT · gümrük · atölye · havuz · kur · servis) — krizin ŞEKLİ; preset seçilince poligon o şekle morph eder, elle sapınca kesikli referans poligonu kalır. 11 preset. **Kriz arazisi (3D):** kategori × ay yükseklik alanı — 5.000 parça her ay yeniden hesaplanır, "duvara kaçıncı ayda çarpıyoruz" sorusunun cevabı. **Kriz takvimi:** tırmanma → plato → toparlanma profilleri, tıklanabilir ay şeridi; zirve kırmızı, duvar ayı, zirve açık pozisyon, kriz yükü (parça·ay). **Alarm rayı:** 12 eşik tabanlı uyarı (SEN-A00…A11) — koşulu sağlanmayan alarm listeye girmez. **Belirsizlik denemeleri** (kümülatif olasılık eğrisi, %80/%90/%95 aralık, senaryo sabitleme, beklenen fatura ↔ kötü giden %10, formül↔deneme doğrulaması); canlı dayanıklılık dağılımı (emniyet marjı ↔ dayanma süresi); seçili senaryonun etrafında tornado duyarlılık; greedy kaynak tahsisi; kabiliyet ROI |
 
 ## İç veri gezgini (`data_explorer.py`, PyQt6)
 
@@ -87,7 +88,8 @@ pyproject.toml, uv.lock Python bağımlılıkları
 
 web/                    React + TypeScript + Vite uygulaması (canlı ürün)
   src/engine/           hesap çekirdeği — core.py formüllerinin TS ikizi
-  src/views/            ekranlar (Code, Watchlist, Ongoru, Harita, Senaryo)
+  src/views/            ekranlar (Giris, Code, Watchlist, Ongoru, Harita, Senaryo)
+  src/views/hangar/     açılış sahnesi: prosedürel uçak/motor geometrisi + koreografi
   src/data/payload.json build_dashboard.py çıktısı (uygulamanın okuduğu veri)
 
 veri/
@@ -102,8 +104,10 @@ veri/
 ## Doğrulama
 
 - Gömülü her sayı `core.py`'den yeniden üretilebilir; 102 metrik CSV'lerden script'le mutabakatlandı.
-- Web parite testleri (`npm test`, 44 kontrol): kanal dağılımı 694/641/217/3.448 · sipariş alarmı 42 ·
+- Web parite testleri (`npm test`, 113 kontrol): kanal dağılımı 694/641/217/3.448 · sipariş alarmı 42 ·
   kırmızı 134/22 · motor krizi 477 · belirsizlik 389 (%80: 371–408). Taşımada tek bir sayı kaybolmadı.
+  Yeni şok eksenleri (gümrük · atölye · havuz · kur · filo bandı) nötrken baz durumu BİREBİR verir;
+  kriz takviminin 0. ayı da aynı 134'ü üretir — testler bu sözleşmeyi kilitliyor.
 - Float formülü saha doğrulaması: model 8.012 ↔ gerçek tamirde 7.800 adet (**%97**).
 - **Tüm veriler sentetik/temsili** — gerçek THY/AMOS verisi değildir.
 

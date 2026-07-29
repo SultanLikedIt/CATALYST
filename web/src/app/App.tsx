@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect } from 'react';
-import { motion, LayoutGroup } from 'framer-motion';
+import { motion, LayoutGroup, AnimatePresence } from 'framer-motion';
 import { useStore, SEKMELER, type Sekme } from './store';
 import Sozluk from './Sozluk';
 import { K, B, PRM } from '@/data/payload';
@@ -13,6 +13,9 @@ const Watchlist = lazy(() => import('@/views/Watchlist'));
 const Ongoru = lazy(() => import('@/views/Ongoru'));
 const Harita = lazy(() => import('@/views/Harita'));
 const Senaryo = lazy(() => import('@/views/Senaryo'));
+/* Açılış sahnesi ayrı parça: uygulamanın kendisi three'yi beklemeden hazırlanır,
+   kapıdan geçildiğinde arkada zaten kurulmuş ekran bulunur. */
+const Giris = lazy(() => import('@/views/Giris'));
 
 const GORUNUM: Record<Sekme, React.ComponentType> = {
   karar: Code,
@@ -49,16 +52,23 @@ function UstBar() {
   const sekme = useStore((s) => s.sekme);
   const git = useStore((s) => s.git);
   const bas = useStore((s) => s.sozlugeBas);
+  const girisAc = useStore((s) => s.girisAc);
 
   // Tek nav dili: üst bar her sekmede açık THY şeridi. (Eski koyu varyant
   // kaldırıldı — uygulamanın iki ayrı site gibi görünmesinin ana sebebiydi.)
   return (
     <nav className="topbar">
       <div className="topbar-in">
-        <span className="brand">
+        {/* Marka açılış sahnesine döner: sunumda "baştan alalım" demek tek tık.
+            Düğme, çünkü gerçekten bir eylem — dekoratif başlık değil. */}
+        <button
+          className="brand brand-btn"
+          onClick={girisAc}
+          title="Açılış sahnesini yeniden oynat"
+        >
           <MarkaIsaret />
           <b>CATALYST</b> · 2033
-        </span>
+        </button>
         {/* "SENTETİK / TEMSİLİ VERİ" rozeti kaldırıldı: aynı uyarı sayfa altındaki
             varsayım şeridinde zaten tam cümleyle duruyor, üst barda ikinci kez
             durunca nav kalabalıklaşıyordu. */}
@@ -108,6 +118,7 @@ function Yukleniyor() {
 export default function App() {
   const sekme = useStore((s) => s.sekme);
   const yon = useStore((s) => s.yon);
+  const giris = useStore((s) => s.giris);
   const Gorunum = GORUNUM[sekme];
 
   useEffect(() => {
@@ -117,6 +128,39 @@ export default function App() {
 
   return (
     <>
+      {/* Açılış sahnesi uygulamanın ÜSTÜNDE durur, yerine geçmez: kapı
+          kapandığında arkadaki ekran çoktan hesaplanmış ve boyanmıştır,
+          geçişte "yükleniyor" görünmez. */}
+      {/* initial={false}: ilk açılışta GİRİŞ ANİMASYONU YOK. Perde açılırken
+          soluk geçseydi, three yüklenene kadar arkadaki CODE ekranı yarı saydam
+          görünüyordu — sürpriz olması gereken sahne "yüklenen bir katman" gibi
+          duruyordu. Perde ilk kareden itibaren kapalı; animasyon yalnız
+          kapanışta (uygulamaya geçerken) çalışır. */}
+      <AnimatePresence initial={false}>
+        {giris && (
+          <motion.div
+            key="giris"
+            exit={{ opacity: 0, filter: 'blur(10px)' }}
+            transition={{ duration: 0.55, ease: [0.4, 0, 1, 1] }}
+            style={{ position: 'fixed', inset: 0, zIndex: 80 }}
+          >
+            <Suspense
+              fallback={
+                <div className="giris-perde">
+                  <span>
+                    <MarkaIsaret />
+                    <b>CATALYST</b>
+                  </span>
+                  <i />
+                </div>
+              }
+            >
+              <Giris />
+            </Suspense>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <UstBar />
       <div className="wrap">
         {/* CODE kendi dev başlığını, harita ise ekranın tamamını taşır — genel hero

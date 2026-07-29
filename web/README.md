@@ -9,7 +9,7 @@ npm install
 npm run dev              # http://localhost:5173
 npm run build            # dist/          — kod bölünmüş statik site
 npm run build:tek-dosya  # dist-tek-dosya/index.html — TEK DOSYA, offline (jüri demosu)
-npm test                 # parite + geometri testleri (85 kontrol)
+npm test                 # parite + geometri testleri (113 kontrol)
 npm run tip              # tsc --noEmit
 ```
 
@@ -33,21 +33,75 @@ src/
                stats · flags · ladder · karar · oner · senaryo · kriz · tahsis · format
   design/      tokens.css (THY paleti) · base.css · code.css (konsol) · kure.css (harita HUD)
                senaryo.css (şok gülü · takvim şeridi · alarm rayı · arazi HUD)
-               motion.ts · renkler.ts
+               hangar.css (açılış sahnesi HUD'u) · motion.ts · renkler.ts
   app/         App (kabuk, sekmeler, geçiş) · store (zustand) · Sözlük
   components/  Grafik (Chart.js sarmalayıcı) · temel (Kart/Kpi/Cip/…) · KararKarti (tek karar mekanizması)
-  views/       Code · Watchlist · Ongoru · Harita · Senaryo
+  views/       Giris (açılış sahnesi) · Code · Watchlist · Ongoru · Harita · Senaryo
+               hangar/{hangarGeo,hangarVeri,Ucak,Motor,HangarSahne}
                code/{Kure,KararKonsolu,UzunVade,icgoru,sahneVeri}
                watchlist/ParcaDetay · ongoru/ParamPanel
                senaryo/{araziGeo,Arazi,SokGulu,alarmlar,Belirsizlik}
                harita/haritaVeri · harita/kure/{kureGeo,kureStil,KureSahne}
 ```
 
-## CODE — açılış ekranı
+## GİRİŞ — dijital hangar (açılış sahnesi)
 
-İlk sekme, koyu operasyon konsolu temasındaki **CODE (Component Decision Engine)**; uygulamanın
-geri kalanı açık THY temasında kalır (`design/code.css` yalnız bu ekranı sarar, üst bar CODE'da
-koyu tona geçer).
+Uygulamanın kapısı: `views/Giris.tsx` + `views/hangar/`. Beş perdelik **tek çekim** bir 3D sahne —
+hangar → pist/filo → motora dalış → komponentlerin açılması → karar küresi. Kamera kesilmez;
+perde 0'dan 1'e giderken hangar kapısından fiilen dışarı uçar, sonra geri dönüp motorun içine girer.
+
+Altı tasarım kararı kayda değer:
+
+- **Hazır 3D model YOK.** Gövde `LatheGeometry`, kanat/kuyruk `ExtrudeGeometry`, motor
+  silindir + kesit — hepsi `hangarGeo.ts`'teki kesit tablolarından çalışma anında üretilir.
+  Gerekçe `build:tek-dosya` garantisi: bir GLTF ya da doku dosyası ya ayrı ağ isteği ya da
+  megabaytlarca base64 demekti. Prosedürel siluetin dosya maliyeti sıfır, her zoomda keskin.
+- **"Oyuncak uçak" üç şeyden kurtuldu** (ilk sürümün dersi, `Ucak.tsx` başında da yazılı):
+  (1) livery artık KUTU değil — kırmızı kuşak ve gri karın, gövdeyle **aynı lathe profilinden**
+  sınırlı phi ile üretilir, yani boya gövdeye sarılır; kutu geometri silindiri kesip yanlardan
+  levha gibi taşıyordu. (2) Kanat sivrilmesi %35'ten %18'e indi — eskisi "kürek" gibiydi.
+  (3) Parça sayısı siluet demek: winglet, kanat–gövde peteği, dorsal fin, ters itki kuşağı,
+  APU egzozu, bogie'li ana takım. Hiçbiri tek başına fark edilmiyor, toplamı uçak yapıyor.
+- **Motor YANDAN ve kesitli.** Kamera baştan bakarken yalnız fan diski görünüyordu; kaportadan
+  ~130°'lik bir dilim çıkarılıp kamera yana alınınca fan → booster → HP kompresör kademeleri →
+  yanma odası (yanan) → türbin → egzoz konisi tek karede okunuyor. Kesit sabittir, kamerayla
+  dönmez: serbest bakışta kullanıcı çevirip kapalı tarafı da görür.
+- **Ortam haritası da dosyasız.** metalness'i yüksek malzeme yansıtacak bir şey bulamazsa
+  SİYAH çıkar — ilk sürümde motor ve gövde kömür gibiydi, ışık artırmak da çözmüyordu.
+  Çözüm three'nin içinde kodla gelen `RoomEnvironment`; PMREM'den geçirilip
+  `scene.environmentIntensity = 0.32` ile takılıyor (tam güçte gece hangarı stüdyoya dönüyor).
+- **Tek kayan sayı.** Kamera, uçağın opaklığı, fan hızı, komponent patlaması ve son küre —
+  hepsi tek bir `akis` (0..4) değerinden türer. Bu yüzden ileri/geri sarmak, atlamak ve
+  duraklatmak bedava; ayrı zaman çizelgesi tutulmuyor.
+- **Rozetler süs değil, üstelik doğru yerde.** Motorun üstünde açılan sekiz komponent,
+  payload'daki sekiz ATA motor kategorisidir (ATA 71–80, `hangarVeri.ts`): 1.552 PN · 55 kırmızı
+  · $43,2M. Her rozet **kendi fiziksel istasyonunda** durur — yanma odası rozeti yanma odasının,
+  starter rozeti aksesuar kutusunun hizasında; patladıklarında motorun boyunca yayılıyorlar ve
+  "bu parça motorun neresinde" sorusu görüntüden okunuyor. (İlk tasarım tek düzlemde bir halkaydı;
+  motor yandan gösterilince halka kenardan görünüp rozetler üst üste biniyordu.) Rozete tıklayınca
+  gerçek künye açılır; "kategori kırılımını aç" bağlantısı Öngörü sekmesine götürür. Etiketler
+  3D'de değil tuval üstündeki HTML katmanında durur ve her karede oradan yansıtılır — aynı
+  teknik `code/Kure.tsx`'te de kullanılıyor (drei `Html` tuvali kaplayıp tıklamayı yutuyordu).
+- **3D SERBEST.** Üst bardaki anahtar kamerayı kullanıcıya verir (`OrbitControls`): sürükle
+  döndür, tekerlek yakınlaştır. Açıkken koreografi kameraya DOKUNMAZ — iki yerden birden
+  sürülen kamera titriyordu — ama fan dönmeye, yanma odası yanmaya devam eder. Perde
+  değiştirmek serbest bakışı kapatır ve yönetmen koltuğuna döner.
+
+Son perdedeki karar küresi CODE ekranındaki operasyon küresinin **aynı Fibonacci dağılımı ve aynı
+paletidir** (72 siparişsiz · 62 kalan kırmızı · 1.418 aksiyon · 3.448 izle): kapı açıldığında
+kullanıcı ilk ekranda aynı görüntüyü bulur, film ile ürün arasında kesinti hissetmez.
+
+`Enter`/`ESC` geçer, `← →` ve fare tekerleği perde çevirir, boşluk duraklatır (serbest bakışta
+tekerlek yakınlaştırmaya döner). Üst bardaki markaya basmak sahneyi yeniden oynatır
+(`store.girisAc`). `prefers-reduced-motion` açıksa film kendiliğinden ilerlemez, perdeleri
+kullanıcı tıklar.
+
+## CODE — ana ekran
+
+Kapıdan geçilince açılan ilk sekme **CODE (Component Decision Engine)**. Beş ekranın tamamı
+açık THY temasındadır — `design/code.css` yalnız bu ekranın kendi düzenini sarar; koyu ton
+sayfada değil, sahnenin içinde kalır (bkz. tokens.css "tek koyu yüzey kuralı"; giriş sahnesi
+bu kuralın bilinçli istisnasıdır, çünkü orada sayfa zaten görüntünün kendisidir).
 
 **Karar mekanizması watchlist'ten buraya taşındı.** Kart tek bileşendir
 (`components/KararKarti.tsx`): konsolda düğmeleriyle, parça detayında `saltOkunur` modunda —
@@ -85,7 +139,7 @@ cd .. && uv run build_dashboard.py
 
 ## Parite
 
-`npm test` — **85 kontrol**, üç dosya.
+`npm test` — **113 kontrol**, dört dosya.
 
 **57'si motor (`engine.test.ts`).** Bir bölümü sayı paritesi, hepsi `core.py`'den doğrulanmış
 sabit değerlere karşı: kanal dağılımı 694/641/217/3.448 · sipariş alarmı 42 · kırmızı 134/22 ·
@@ -121,6 +175,19 @@ normalize 0..1, maksimum tam 1 · boş seri ve tümü sıfır ızgara çökmez (
 ızgara sınırları içinde ve yükseklik değerle artar · tarama çizgisi doğru sütuna oturur, taşan aya
 kırpılır · kamera ızgaranın dışından ve üstünden bakar · rampa girdileri kırpılır, sıcaklık arttıkça
 kırmızılaşır ve **marka kırmızısı rampada yoktur** (kimlik rengi ile veri rengi ayrı işler).
+
+**28'i hangar geometrisi (`hangar/hangarGeo.test.ts`):** açılış sahnesi gözle doğrulanır ama
+siluet ve uçuş profili gözle YANILTICIDIR — kamera uzaktayken "uçak gibi" duran bir eğri, yakın
+planda burnu yere gömülü çıkar. Kilitlenenler: kalkışta tekerlek rotasyona kadar yerde kalır,
+irtifa ondan sonra tek yönlü artar ve burun açısı ~20°'yi geçmez (üstü "roket" görünüyor) ·
+inişte irtifa temasa kadar tek yönlü azalır, **hiçbir t'de sıfırın altına inmez** ve flare burnu
+kaldırıp temastan sonra indirir · gövde profili kuyruktan buruna sıralı, iki uç kapalı · kanat
+sivrilir ve ok açılıdır · rozet dağılırken **istasyonu (z) kaymaz**, yalnız yarıçapı büyür ·
+sekiz rozetin ikisi aynı (z, açı) çiftinde değildir ve **yandan bakışta ayrışırlar** — etiket
+çakışmasının sayısal karşılığı · kademeler eksen boyunca sıralı, hepsi fanın arkasında ve kor
+kaportasını delmez · fan kaportanın içinde kalır · kor kesiti önce daralıp sonra genişler (yanma
+odası boğazı) · karar küresinin noktaları birim küre üzerindedir · son üç perdenin kamerası
+motorun önünde kalır ve perde 2–3 motoru **yandan** görür (kesitin içi ancak böyle okunur).
 
 Testler "kod çalışıyor mu" demiyor; **taşımada tek bir sayının kaybolmadığını** kanıtlıyor.
 
