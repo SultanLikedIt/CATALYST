@@ -13,7 +13,7 @@
  * Sayı üretmez: konumlar kureGeo.ts'ten, süre/maliyet/kanal haritaVeri.ts'ten
  * gelir. Sahne yalnız çizer.
  */
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Canvas, useFrame, useThree, type ThreeEvent } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
 import * as THREE from 'three';
@@ -37,19 +37,6 @@ const bufGeo = (arr: Float32Array): THREE.BufferGeometry => {
   return g;
 };
 
-/** polyline → LineSegments ikilileri (R3F'te <line> TS'te SVG ile çakışıyor) */
-function segmentle(poz: Float32Array, n: number): Float32Array {
-  const out = new Float32Array(n * 6);
-  for (let i = 0; i < n; i++) {
-    out[i * 6] = poz[i * 3];
-    out[i * 6 + 1] = poz[i * 3 + 1];
-    out[i * 6 + 2] = poz[i * 3 + 2];
-    out[i * 6 + 3] = poz[(i + 1) * 3];
-    out[i * 6 + 4] = poz[(i + 1) * 3 + 1];
-    out[i * 6 + 5] = poz[(i + 1) * 3 + 2];
-  }
-  return out;
-}
 
 /**
  * İşaret ölçeği: kamera uzaklığına orantılı çarpan, yani ekrandaki boy sabit.
@@ -487,7 +474,34 @@ function Yay({ s, onUzerinde }: { s: YaySpec; onUzerinde: (v: string | null) => 
     () => yayNoktalari(s.a, s.b, 1 + s.kat * 0.22 + (s.vurgu ? 0.06 : 0)),
     [s.a, s.b, s.kat, s.vurgu],
   );
-  const cizgi = useMemo(() => bufGeo(segmentle(poz, n)), [poz, n]);
+  /* Yay bir ÇİZGİ değil ince bir TÜP: WebGL'de lineWidth çoğu tarayıcıda yok
+     sayılıyor ve çizgi ne yaparsanız yapın 1 piksel kalıyor. Kalınlık ancak
+     gerçek geometriyle elde ediliyor. Yarıçap role göre değişir ki vurgulanan
+     rota soluk olanların arasından sıyrılsın.
+
+     TÜPÜN BEDELİ: sabit yarıçap dünya biriminde ölçülür, yani yakınlaştıkça
+     ekranda kalınlaşır — aynı yay genel kadrajda 2 px, rota kadrajında 6 px
+     çıkıyordu. Yarıçap bu yüzden kamera uzaklığına oranlanıyor; ekrandaki
+     kalınlık artık her kadrajda aynı. Geometriyi her karede yeniden kurmamak
+     için ölçek BASAMAKLANIR: %18'den küçük değişimde eski geometri korunur. */
+  const [olcek, setOlcek] = useState(1);
+  useFrame(({ camera }) => {
+    const k = Math.max(0.3, Math.min(2.4, camera.position.length() / OLCEK_REF));
+    setOlcek((v) => (Math.abs(k - v) / v > 0.18 ? k : v));
+  });
+
+  const govde = useMemo(() => {
+    const adim = Math.max(1, Math.floor(n / 72));
+    const pts: THREE.Vector3[] = [];
+    for (let i = 0; i <= n; i += adim)
+      pts.push(new THREE.Vector3(poz[i * 3], poz[i * 3 + 1], poz[i * 3 + 2]));
+    // adım n'i tam bölmezse son nokta düşer, yay hedefe varmadan biterdi
+    if (n % adim !== 0) pts.push(new THREE.Vector3(poz[n * 3], poz[n * 3 + 1], poz[n * 3 + 2]));
+    /* Referans kadrajda (kamera 3,9 birim, fov 42) 1 dünya birimi ≈ 317 px.
+       Yani 0,0024 → ~1,5 px. `olcek` bunu her kadrajda sabit tutar. */
+    const r = (s.soluk ? 0.0012 : s.vurgu ? 0.0038 : 0.0024) * olcek;
+    return new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), pts.length, r, 6, false);
+  }, [poz, n, s.soluk, s.vurgu, olcek]);
 
   /* Işın ince çizgiyi yakalayamaz: yayın üstüne boyanmayan (colorWrite=false)
      kalın bir tüp konur, tıklama ve ipucu onun üzerinden gelir. */
@@ -500,6 +514,7 @@ function Yay({ s, onUzerinde }: { s: YaySpec; onUzerinde: (v: string | null) => 
   }, [poz, n]);
 
   useEffect(() => () => void tup.dispose(), [tup]);
+  useEffect(() => () => void govde.dispose(), [govde]);
 
   /* Çizgide TOPLAMSAL karışım YOK: yaylar hedefte demet hâlinde birleşiyor ve
      toplamsal karışım demeti beyaza doyuruyordu — kanal rengi okunmaz oluyordu.
@@ -509,9 +524,9 @@ function Yay({ s, onUzerinde }: { s: YaySpec; onUzerinde: (v: string | null) => 
 
   return (
     <group>
-      <lineSegments geometry={cizgi} raycast={() => null}>
-        <lineBasicMaterial color={s.renk} transparent opacity={opak} depthWrite={false} />
-      </lineSegments>
+      <mesh geometry={govde} raycast={() => null}>
+        <meshBasicMaterial color={s.renk} transparent opacity={opak} depthWrite={false} />
+      </mesh>
       {!s.soluk && (
         <Akis
           poz={poz}

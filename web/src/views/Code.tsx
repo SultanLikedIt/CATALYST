@@ -12,14 +12,14 @@
  */
 import { Component, Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { D, K, PN, LK, NPN } from '@/data/payload';
 import { kararMotoru } from '@/engine/karar';
 import { FL, hasF } from '@/engine/flags';
 import type { Kova, Pencere } from '@/engine/ladder';
 import { fmt, mM, mUsd, pct } from '@/engine/format';
 import { useStore } from '@/app/store';
-import { icgoruler, motorLog, TIP_AD, type Icgoru } from './code/icgoru';
+import { icgoruler, TIP_AD, type Icgoru } from './code/icgoru';
 import { KAYNAKLAR, SC } from './code/sahneVeri';
 import KararKonsolu from './code/KararKonsolu';
 import UzunVade from './code/UzunVade';
@@ -53,7 +53,6 @@ const KANAL_RENK: Record<string, string> = {
 export default function Code() {
   const d = useMemo(() => kararMotoru(), []);
   const G = useMemo(() => icgoruler(), []);
-  const LOG = useMemo(() => motorLog(), []);
 
   const secili = useStore((s) => s.codeParca);
   const codeSec = useStore((s) => s.codeSec);
@@ -62,26 +61,35 @@ export default function Code() {
   const parcaAc = useStore((s) => s.parcaAc);
   const haritadaGoster = useStore((s) => s.haritadaGoster);
   const git = useStore((s) => s.git);
+  const konsolIstek = useStore((s) => s.codeOdak);
 
   const konsolRef = useRef<HTMLDivElement>(null);
   const trfRef = useRef<HTMLDivElement>(null);
-  const [logIdx, setLogIdx] = useState(0);
   const [gIdx, setGIdx] = useState(0);
   const [hepsi, setHepsi] = useState(false);
   const [duraklat, setDuraklat] = useState(false);
   const [kaynak, setKaynak] = useState<string | null>(null);
 
-  /* motor log şeridi ve içgörü akışı kendi kendine ilerler */
-  useEffect(() => {
-    const t = setInterval(() => setLogIdx((v) => (v + 1) % LOG.length), 2800);
-    return () => clearInterval(t);
-  }, [LOG.length]);
-  /* Akış okunurken durmalı: fare akışın üstündeyken sayaç işlemez. */
+  /* İçgörü akışı kendi kendine ilerler.
+     Akış okunurken durmalı: fare akışın üstündeyken sayaç işlemez. */
   useEffect(() => {
     if (hepsi || duraklat) return;
     const t = setInterval(() => setGIdx((v) => (v + 4) % G.length), 10000);
     return () => clearInterval(t);
   }, [G.length, hepsi, duraklat]);
+
+  /* Watchlist → "CODE konsolunda karar ver": sekme açıldığında konsola kaydır.
+     Gecikme BİLEREK var — sekme yeni mount oluyor, aynı karede scrollIntoView
+     çağrılırsa hedefin yüksekliği daha hesaplanmamış oluyor ve sayfa yarı yolda
+     kalıyor (ölçüldü). nonce değişmedikçe bir daha çalışmaz. */
+  useEffect(() => {
+    if (!konsolIstek) return;
+    const t = setTimeout(
+      () => konsolRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }),
+      90,
+    );
+    return () => clearTimeout(t);
+  }, [konsolIstek?.nonce, konsolIstek]);
 
   const konsolaGit = (i: number) => {
     codeSec(i);
@@ -229,7 +237,7 @@ export default function Code() {
         </div>
 
         <div>
-          <div className="code-panel" style={{ marginBottom: 12 }}>
+          <div className="code-panel">
             <div className="bas">
               <span className="kod">CDE-00</span>
               <h3>Bağlı kaynaklar</h3>
@@ -259,20 +267,6 @@ export default function Code() {
             </div>
           </div>
 
-          <div className="ai-log">
-            <span className="imle" />
-            <AnimatePresence mode="wait">
-              <motion.span
-                key={logIdx}
-                initial={{ opacity: 0, y: 6 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.25 }}
-              >
-                {LOG[logIdx]}
-              </motion.span>
-            </AnimatePresence>
-          </div>
         </div>
       </header>
 
@@ -462,7 +456,7 @@ export default function Code() {
       </div>
 
       {/* ════════════════════════════════════════════════ ④ karar konsolu */}
-      <div ref={konsolRef}>
+      <div ref={konsolRef} style={{ scrollMarginTop: 70 }}>
         <KararKonsolu />
       </div>
 

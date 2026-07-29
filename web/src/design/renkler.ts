@@ -6,26 +6,29 @@
  * ayırmak, sunumdaki tek renkli vurgunun gücünü koruyor.
  */
 export const C = {
-  bg: '#F7F8F9',
-  panel: '#FFFFFF',
-  panel2: '#F0F2F4',
-  panel3: '#E7EAED',
-  line: '#E2E5E9',
-  lineSoft: '#ECEFF2',
-  axis: '#CBD1D8',
-  text: '#1A1D21',
-  muted: '#57616F',
-  dim: '#949CA7',
+  bg: '#ECEDEE',
+  panel: '#F8F8F9',
+  panel2: '#E3E4E6',
+  panel3: '#D9DADD',
+  line: '#DCDDDF',
+  lineSoft: '#E6E7E9',
+  axis: '#C8CACD',
+  text: '#26282A',
+  muted: '#6A6E72',
+  dim: '#8E9296',
 
   marka: '#E81932', // yalnız kimlik / birincil eylem
-  navy: '#16233A',
+  navy: '#16233A', // 3D sahne yüzeyi — sayfa paletinin dışında
 
-  iyi: '#0E6B4A',
-  uyari: '#8A6000',
+  /* SAYFA nötr gri, VERİ renkli. İkisi ayrı iş: zemin sakin kalmalı ama
+     seriler birbirinden ayırt edilebilmeli. Tamamı griye çekilince grafikler
+     okunmaz oldu — kategoriler tek gri lekeye dönüşüyordu. */
+  iyi: '#1B7A55',
+  uyari: '#9A6B12',
   kritik: '#C1121F',
-  bilgi: '#2C5AA0',
-  mor: '#5B4B8A',
-  gri: '#6E7783',
+  bilgi: '#2C6CA8',
+  mor: '#6B4E9B',
+  gri: '#7C838C',
   altin: '#C6A26B',
 } as const;
 
@@ -46,30 +49,35 @@ export const CC = {
  * tonlar bir çubuğun tamamını boyayınca ekran ağırlaşıyor, C.uyari gibi koyu
  * sarılar da haki/hardal görünüyordu. Dolgular ayrı bir rampadan gelir.
  *
- * KURAL — "ne kadar?" sorusunu yanıtlayan her seri tek hue ailesinden (çelik
- * mavisi, THY lacivertinin açılmış hâli) beslenir; koyuluk büyüklüğü kodlar.
+ * KURAL — "ne kadar?" sorusunu yanıtlayan her seri tek aileden (çelik mavisi)
+ * beslenir; koyuluk büyüklüğü kodlar. Renk yalnız ANLAM taşıdığında değişir:
+ * yeşil = tutan/büyüyen, kırmızı = alarm, gri = referans.
+ *
+ * Bir denemede bu aile de griye çekilmişti (sayfa nötrleşince "her şey nötr
+ * olsun" diye). Grafikler okunmaz oldu: yan yana dört gri çubuk tek lekeye
+ * dönüşüyor. SAYFA nötr, VERİ renkli — ikisi ayrı iş.
  * Renk yalnız ANLAM taşıdığında değişir: yeşil = tutan/büyüyen, kırmızı =
  * alarm, gri = referans. Böylece grafik gökkuşağına dönmüyor ve tek bir renkli
  * çubuk gördüğümüzde bunun bir şey söylediğini biliyoruz.
  */
 export const S = {
-  s1: '#14314E',
-  s2: '#235682',
-  s3: '#4580B4',
-  s4: '#85AACD',
-  s5: '#C0D4E6',
-  s6: '#E4ECF4',
+  s1: '#17456F',
+  s2: '#2C6CA8',
+  s3: '#4A8CC4',
+  s4: '#7FB0DA',
+  s5: '#B4D2EB',
+  s6: '#DCE9F5',
 
-  yesil: '#17845F',
-  yesilAcik: '#B7DCCC',
-  notr: '#C7CDD4',
-  notrKoyu: '#95A0AD',
+  yesil: '#1B7A55',
+  yesilAcik: '#BFE0D0',
+  notr: '#C6CBD1',
+  notrKoyu: '#7C838C',
   alarm: '#C1121F',
-  alarmAcik: '#EFC4C8',
+  alarmAcik: '#EFC9CD',
 } as const;
 
 /** kritiklik sınıfı renkleri: AOG KRİTİK / KRİTİK / KRİTİK DEĞİL */
-export const KR_RENK = ['#C1121F', '#B87500', '#8A929C'] as const;
+export const KR_RENK = ['#C1121F', '#A8761B', '#8A929C'] as const;
 
 /**
  * Opak tonlama: açık zeminde alfa rengi soldurur, ton ile hiyerarşi kurulur.
@@ -85,7 +93,7 @@ export function tint(hex: string, k: number): string {
 }
 
 /**
- * 0..1 → tek hue ısı rampası (açık çelik → koyu lacivert).
+ * 0..1 → tek aile ısı rampası (açık çelik → koyu çelik).
  *
  * Eskisi gri → bej → kırmızı geçiyordu: bej ara ton çamurlanıyordu ve en yoğun
  * hücre "alarm" gibi okunuyordu — oysa orada yalnızca "en çok talep buradan
@@ -94,9 +102,9 @@ export function tint(hex: string, k: number): string {
  */
 export function isiRenk(t: number): string {
   const stops = [
-    [240, 244, 249],
-    [133, 170, 205],
-    [20, 49, 78],
+    [232, 238, 245],
+    [122, 172, 214],
+    [23, 69, 111],
   ];
   const u = Math.max(0, Math.min(1, t));
   const seg = u < 0.5 ? 0 : 1;

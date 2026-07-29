@@ -59,7 +59,10 @@
   grid-template-columns: minmax(0, 1fr) minmax(300px, 0.82fr);
   gap: 26px;
   padding: 26px 0 20px;
-  align-items: start;
+  /* Sağ kolon ALTA hizalı: altındaki motor log şeridi kaldırılınca panel
+     havada asılı kalıyordu. Şimdi alt kenarı soldaki durum şeridiyle aynı
+     hatta oturuyor, iki kolon aynı tabana basıyor. */
+  align-items: end;
 }
 @media (max-width: 1080px) {
   .code-hero {
@@ -606,36 +609,7 @@
 }
 
 /* motor log şeridi */
-.ai-log {
-  border: 1px solid var(--c-line);
-  background: var(--s-2);
-  padding: 8px 12px;
-  font-family: var(--tk-font-mono);
-  font-size: var(--fs-mikro);
-  color: var(--c-iyi);
-  letter-spacing: 0.04em;
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  min-height: 32px;
-  overflow: hidden;
-}
-.ai-log .imle {
-  display: inline-block;
-  width: 7px;
-  height: 12px;
-  background: var(--c-iyi);
-  animation: imle 1s steps(2) infinite;
-}
-@keyframes imle {
-  0%,
-  100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0;
-  }
-}
+
 
 /* ------------------------------------------------------- karar konsolu */
 .kq {

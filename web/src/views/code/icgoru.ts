@@ -9,7 +9,7 @@
 import { D, K, PN, LK } from '@/data/payload';
 import { kararMotoru } from '@/engine/karar';
 import { type FlagKey } from '@/engine/flags';
-import { fmt, mM, pct, mUsd, vir } from '@/engine/format';
+import { fmt, mM, pct, vir } from '@/engine/format';
 
 export type IcgoruTip = 'alarm' | 'risk' | 'firsat' | 'plan';
 
@@ -239,19 +239,3 @@ export function icgoruler(): Icgoru[] {
   return L;
 }
 
-/** Konsol üst şeridindeki "motor ne yapıyor" satırları — sırayla akar. */
-export function motorLog(): string[] {
-  const d = kararMotoru();
-  return [
-    `AMOS · TRAX · ÜPK · depo kayıtları eşlendi → ${fmt(K.pn)} parça tek kimlikte birleşti`,
-    `talep serisi çözümlendi · medyan ${fmt(K.medyan_talep)} adet/yıl · ${fmt(K.kesikli)} parça kesikli`,
-    `Poisson servis hedefi uygulandı → 2033 MIN toplamı ${fmt(K.min33)} adet`,
-    `${fmt(d.aksiyon)} parça aksiyon kanalına düştü · ${fmt(d.say.izle)} parça izlemede`,
-    `tedarik penceresi tarandı → ${fmt(d.alarm.length)} parçada pencere kapalı ve sipariş yok`,
-    `kapatma maliyeti hesaplandı: ${mUsd(d.kapTop)} · en hızlı kanal birim fiyatlarıyla`,
-    `filo projeksiyonu bindirildi · 1.200 → 2.000 uçak · talep bandı +%${Math.round(
-      D.band.alt_pct,
-    )}–${Math.round(D.band.ust_pct)}`,
-    `senaryo kütüphanesi hazır · kriz şoku parametre olarak uygulanabilir`,
-  ];
-}

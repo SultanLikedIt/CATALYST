@@ -159,7 +159,7 @@ canvas {
   position: sticky;
   top: 0;
   z-index: var(--z-ustbar);
-  background: rgba(255, 255, 255, 0.86);
+  background: rgba(227, 228, 230, 0.88);
   backdrop-filter: saturate(180%) blur(14px);
   border-bottom: 1px solid var(--ln);
 }
@@ -607,14 +607,14 @@ tbody tr.rkOn td {
   border: 1px solid var(--st-amber-line);
 }
 .bg-sari {
-  background: #f6f3dc;
-  color: #6e6200;
-  border: 1px solid #ded9a8;
+  background: var(--st-amber-soft);
+  color: var(--st-amber);
+  border: 1px solid var(--st-amber-line);
 }
 .bg-mor {
   background: var(--st-violet-soft);
   color: var(--st-violet);
-  border: 1px solid #cfc9df;
+  border: 1px solid var(--st-violet-line, #d2ccd5);
 }
 .sdot {
   display: inline-block;

@@ -3,6 +3,13 @@
    Marka referansı: turkishairlines.com (açık zemin, geniş beyaz alan, tek
    güçlü kırmızı vurgu, sakin nötr griler, keskin küçük yarıçaplar).
 
+   PALET: "Nötr Gri" (kullanıcı seçimi). Nötr basamaklarda HUE YOK — eski
+   merdiven hafif mavi-griydi, artık saf gri.
+
+   AMA BU YALNIZ YÜZEYLER İÇİN GEÇERLİ. Durum renkleri ve grafik serileri
+   renkli kalır; bir denemede onlar da griye çekilince rozetler ve çubuklar
+   birbirinden ayrılamaz oldu. Kural: ZEMİN sakin, VERİ ayırt edici.
+
    KURAL 1 — Marka kırmızısı (--tk-red) yalnız KİMLİK ve BİRİNCİL EYLEM içindir.
    Hiçbir grafik serisinde, hiçbir durum rozetinde kullanılmaz. Veri kırmızısı
    ayrı bir tondur (--st-red), böylece "marka" ile "alarm" gözle ayrışır.
@@ -19,50 +26,54 @@
   --tk-red: #e81932; /* Turkish Airlines kırmızısı — kimlik + birincil eylem */
   --tk-red-600: #d4142b;
   --tk-red-700: #b80f23; /* basılı/hover */
-  --tk-red-050: #fdeef0; /* çok açık zemin (rozet arkası) */
-  --tk-red-100: #f9d5da;
-  --tk-ink: #1a1a1a; /* THY gövde metni */
+  --tk-red-050: #f7e9ea; /* çok açık zemin (rozet arkası) */
+  --tk-red-100: #e4c7c9;
+  --tk-ink: #26282a; /* THY gövde metni */
   --tk-navy: #16233a; /* koyu yüzey: hero, harita, 3D sahne */
   --tk-navy-700: #1f3050;
   --tk-navy-900: #0e1727;
   --tk-gold: #c6a26b; /* premium/elite vurgusu — nadiren */
 
   /* ---------- nötrler (yüzey → çizgi → metin) ---------- */
-  --s-0: #ffffff; /* kart */
-  --s-1: #f7f8f9; /* sayfa zemini */
-  --s-2: #f0f2f4; /* ikincil dolgu, tablo başlığı */
-  --s-3: #e7eaed; /* üçüncül dolgu, ilerleme rayı */
-  --ln: #e2e5e9; /* varsayılan çizgi */
-  --ln-soft: #eceff2;
-  --ln-strong: #cbd1d8; /* kart kenarı, girdi kenarı */
-  --ln-ctl: #aeb6c0; /* etkileşimli kontrol kenarı */
-  --tx: #1a1d21; /* birincil metin */
-  --tx-2: #57616f; /* ikincil metin */
-  --tx-3: #79828f; /* üçüncül / etiket */
-  --tx-4: #949ca7; /* soluk, devre dışı */
+  --s-0: #f8f8f9; /* kart */
+  --s-1: #ecedee; /* sayfa zemini */
+  --s-2: #e3e4e6; /* ikincil dolgu, tablo başlığı, üst bar */
+  --s-3: #d9dadd; /* üçüncül dolgu, ilerleme rayı */
+  --ln: #dcdddf; /* varsayılan çizgi */
+  --ln-soft: #e6e7e9;
+  --ln-strong: #c8cacd; /* kart kenarı, girdi kenarı */
+  --ln-ctl: #aeb1b6; /* etkileşimli kontrol kenarı */
+  --tx: #26282a; /* birincil metin */
+  --tx-2: #565a5f; /* ikincil metin */
+  --tx-3: #6a6e72; /* üçüncül / etiket */
+  --tx-4: #8e9296; /* soluk, devre dışı */
   --tx-on-dark: #eef2f7;
   --tx-on-dark-2: #a8b4c6;
 
   /* ---------- durum (veri) renkleri ---------- */
+  /* NÖTR OLAN YÜZEYLER, DURUM RENKLERİ DEĞİL. Bir denemede bunlar da griye
+     çekilmişti; rozetler ve grafikler birbirinden ayrılamaz hâle geldi. Zemin
+     sakin kalır, durum renkleri ayırt edici olmak zorundadır. */
   --st-red: #c1121f; /* kritik / kırmızı liste */
-  --st-red-soft: #fbf1f2;
-  --st-red-line: #e9b9bc;
-  --st-amber: #8a6000; /* uyarı / dikkat */
-  --st-amber-soft: #f5efe2;
-  --st-amber-line: #dfcfa8;
-  --st-teal: #0e6b4a; /* iyi / kazanım */
-  --st-teal-soft: #e7f0ed;
-  --st-teal-line: #b9d3c9;
-  --st-blue: #2c5aa0; /* bilgi / seçim */
-  --st-blue-soft: #eaeef6;
-  --st-blue-line: #c3cfe4;
-  --st-violet: #5b4b8a; /* ikincil kategori */
-  --st-violet-soft: #eeecf5;
-  --st-gray: #6e7783; /* kıyas serisi */
+  --st-red-soft: #f9ecec;
+  --st-red-line: #e6c3c5;
+  --st-amber: #9a6b12; /* uyarı / dikkat */
+  --st-amber-soft: #f5efe3;
+  --st-amber-line: #ddceae;
+  --st-teal: #1b7a55; /* iyi / kazanım */
+  --st-teal-soft: #e6f1eb;
+  --st-teal-line: #b8d8c8;
+  --st-blue: #2a5f91; /* bilgi / seçim */
+  --st-blue-soft: #e9eff6;
+  --st-blue-line: #c2d3e6;
+  --st-violet: #6b4e9b; /* ikincil kategori */
+  --st-violet-soft: #efecf6;
+  --st-violet-line: #d0c6e2;
+  --st-gray: #7c838c; /* kıyas serisi */
 
   /* kritiklik sınıfı renkleri (AOG KRİTİK / KRİTİK / KRİTİK DEĞİL) */
   --kr-0: #c1121f;
-  --kr-1: #b87500;
+  --kr-1: #a8761b;
   --kr-2: #8a929c;
 
   /* ---------- medya yüzeyleri (3D sahneler) ----------
@@ -83,8 +94,8 @@
      böylece harita "başka bir uygulama" gibi durmaz. */
   --cam: rgba(255, 255, 255, 0.93);
   --cam-2: rgba(255, 255, 255, 0.82);
-  --cam-line: rgba(22, 35, 58, 0.1);
-  --cam-sh: 0 12px 36px -14px rgba(8, 15, 28, 0.55);
+  --cam-line: rgba(38, 40, 42, 0.1);
+  --cam-sh: 0 12px 36px -14px rgba(20, 22, 24, 0.55);
 
   /* ---------- tipografi ---------- */
   /* Lisanslı THY yazı tipi eklenecekse yalnız bu iki satır değişir. */
@@ -123,10 +134,10 @@
   --en: 1360px; /* içerik genişliği */
 
   /* ---------- yükseklik (gölge) ---------- */
-  --sh-0: 0 1px 0 rgba(22, 35, 58, 0.04);
-  --sh-1: 0 1px 2px rgba(22, 35, 58, 0.06), 0 0 0 1px rgba(22, 35, 58, 0.04);
-  --sh-2: 0 4px 14px -4px rgba(22, 35, 58, 0.12), 0 0 0 1px rgba(22, 35, 58, 0.05);
-  --sh-3: 0 14px 38px -10px rgba(22, 35, 58, 0.2), 0 0 0 1px rgba(22, 35, 58, 0.06);
+  --sh-0: 0 1px 0 rgba(38, 40, 42, 0.04);
+  --sh-1: 0 1px 2px rgba(38, 40, 42, 0.06), 0 0 0 1px rgba(38, 40, 42, 0.04);
+  --sh-2: 0 4px 14px -4px rgba(38, 40, 42, 0.12), 0 0 0 1px rgba(38, 40, 42, 0.05);
+  --sh-3: 0 14px 38px -10px rgba(38, 40, 42, 0.2), 0 0 0 1px rgba(38, 40, 42, 0.06);
   --sh-kirmizi: 0 6px 20px -6px rgba(232, 25, 50, 0.4);
 
   /* ---------- hareket ---------- */

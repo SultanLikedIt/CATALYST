@@ -90,6 +90,8 @@ interface Durum {
   hedefIstasyon: string;
 
   haritaOdak: HaritaOdak | null;
+  /** CODE karar konsoluna kaydırma isteği — nonce, aynı parçaya ikinci tıklamayı da tetikler */
+  codeOdak: { i: number; nonce: number } | null;
 
   senaryo: SenaryoCfg & { preset: string };
   params: ParamCfg;
@@ -144,6 +146,7 @@ export const useStore = create<Durum>((set, get) => ({
   siralama: { k: 'risk', artan: false },
   seciliPn: -1,
   codeParca: -1,
+  codeOdak: null,
   codeKuyruk: 'alarm',
   kararlar: {},
   hedefIstasyon: '',
@@ -188,8 +191,11 @@ export const useStore = create<Durum>((set, get) => ({
 
   codeSec: (i) => set({ codeParca: i }),
 
+  /* Sekme değiştirmek YETMİYOR: kullanıcı konsolda karar vermeye geliyor ama
+     CODE sayfanın en başında açılıyordu ve konsol iki ekran aşağıdaydı. nonce,
+     aynı parça için ikinci kez basıldığında da kaydırmayı tetikler. */
   codeAc: (i) => {
-    set({ codeParca: i });
+    set((st) => ({ codeParca: i, codeOdak: { i, nonce: (st.codeOdak?.nonce ?? 0) + 1 } }));
     get().git('karar');
   },
 
