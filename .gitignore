@@ -34,3 +34,6 @@ logs/
 # Office kilit dosyaları
 ~$*
 **/~$*
+
+# Skeç / tanıtım videosu prop'ları — uygulamanın parçası değil, repoya alınmaz
+skec/

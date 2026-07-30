@@ -1,6 +1,6 @@
 /**
  * Parça bayrakları — build_dashboard.py'deki bit maskesiyle BİREBİR.
- * (bit0 kırmızı · bit1 siparişsiz · bit2 risk listesi 547 · bit3 BER · bit4 phase-out
+ * (bit0 kırmızı · bit1 siparişsiz · bit2 dış tamire bağımlı · bit3 BER · bit4 phase-out
  *  bit5 yeni nesil · bit6 hurda anomalisi · bit7 pool bağımlı)
  */
 import { PN } from '@/data/payload';
@@ -22,7 +22,7 @@ export const hasF = (i: number, f: number): boolean => (PN.flags[i] & f) !== 0;
 
 /**
  * Durum sütunu sıralama anahtarı — nokta rengiyle aynı öncelik:
- * siparişsiz > kırmızı > 547 > BER > normal.
+ * siparişsiz > kırmızı > dış tamire bağımlı > BER > normal.
  */
 export const DURUM: number[] = PN.id.map((_, i) =>
   hasF(i, FL.SIP) ? 4 : hasF(i, FL.KIRMIZI) ? 3 : hasF(i, FL.R547) ? 2 : hasF(i, FL.BER) ? 1 : 0,

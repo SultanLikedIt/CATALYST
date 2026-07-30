@@ -1441,7 +1441,7 @@ input[type='range'] {
   font-family: var(--tk-font-sans);
   font-size: 9.5px;
   font-weight: 600;
-  fill: #1a1d21;
+  fill: var(--tx);
   paint-order: stroke;
   stroke: #fff;
   stroke-width: 2.6px;

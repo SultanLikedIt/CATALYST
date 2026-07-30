@@ -104,7 +104,7 @@ export function icgoruler(): Icgoru[] {
     {
       id: 'r547',
       tip: 'risk',
-      kaynak: 'kabiliyet × kritiklik kesişimi',
+      kaynak: 'kabiliyet × operasyonel önem kesişimi',
       guven: 96,
       baslik: `${fmt(K.risk_listesi)} AOG kritik parçada iç tamir kabiliyeti yok`,
       metin:
@@ -200,7 +200,7 @@ export function icgoruler(): Icgoru[] {
       guven: 82,
       baslik: `Q3 talebi diğer çeyreklerin ${pct(K.q3_pct, 1)} üstünde`,
       metin:
-        `Mevsimsellik kritiklik sınıflarında homojen, yani yaz zirvesi bütün portföyü birlikte ` +
+        `Mevsimsellik operasyonel önem sınıflarında homojen, yani yaz zirvesi bütün portföyü birlikte ` +
         `vuruyor. Sipariş ritmi Q2'ye çekilmezse zirve, tedarik süresi uzun parçalarda ` +
         `kırmızıya dönüşür.`,
       eylem: 'mevsim grafiği',

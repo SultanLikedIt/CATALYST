@@ -20,7 +20,7 @@ const SUTUNLAR: { k?: SiralamaAnahtar; ad: string; sayi?: boolean }[] = [
   { ad: 'PN' },
   { ad: 'Model' },
   { ad: 'Kategori' },
-  { ad: 'Kritiklik' },
+  { ad: 'Operasyonel Önem' },
   { k: 'durum', ad: 'Durum' },
   { k: 'svc', ad: 'SVC', sayi: true },
   { k: 'tts', ad: 'TTS / TTR', sayi: true },
@@ -29,15 +29,6 @@ const SUTUNLAR: { k?: SiralamaAnahtar; ad: string; sayi?: boolean }[] = [
   { k: 'clp', ad: 'CLP', sayi: true },
   { k: 'risk', ad: 'Risk', sayi: true },
 ];
-
-const FILTRE_SAYI: Partial<Record<string, number>> = {
-  KIRMIZI: K.kirmizi,
-  SIP: K.siparissiz,
-  R547: K.risk_listesi,
-  BER: K.ber_pn,
-  SCRAPA: K.scrap_anomali,
-  POOLB: K.pool_bagimli,
-};
 
 /** Durum rozeti — parçanın bugünkü hâli; öncelik sırasıyla tek etiket gösterilir. */
 function DurumRozet({ i }: { i: number }) {
@@ -131,7 +122,7 @@ export default function Watchlist() {
     <>
       <Bolum
         baslik={`Watchlist: risk skoruna göre sıralı ${fmt(K.pn)} parça`}
-        aciklama="Risk skoru kritikliği, yıllık talebi ve tedarik süresini birlikte tartar. Satıra tıklayınca parça detayı ve aksiyon seçenekleri açılır."
+        aciklama="Risk skoru operasyonel önemi, yıllık talebi ve tedarik süresini birlikte tartar. Satıra tıklayınca parça detayı ve aksiyon seçenekleri açılır."
       />
 
       <Kart>
@@ -144,7 +135,7 @@ export default function Watchlist() {
             style={{ flex: 1, minWidth: 170 }}
           />
           <select value={w.kr} onChange={(e) => filtreDegis({ kr: e.target.value as typeof w.kr })}>
-            <option value="">Tüm kritiklik</option>
+            <option value="">Tüm operasyonel önem</option>
             {LK.kr.map((k, i) => (
               <option key={k} value={i}>
                 {k}
@@ -159,7 +150,6 @@ export default function Watchlist() {
               baslik={f.ipucu}
             >
               {f.etiket[0].toLocaleUpperCase('tr') + f.etiket.slice(1)}
-              {FILTRE_SAYI[f.anahtar] != null ? ' ' + FILTRE_SAYI[f.anahtar] : ''}
             </Cip>
           ))}
           <Cip onClick={filtreSifirla}>✕ temizle</Cip>
@@ -175,7 +165,7 @@ export default function Watchlist() {
         </div>
 
         <div className="note" style={{ margin: '2px 0 7px' }}>
-          Kritiklik: <span className="sdot" style={{ background: KR_RENK[0] }} /> AOG, uçağı yerde
+          Operasyonel önem: <span className="sdot" style={{ background: KR_RENK[0] }} /> AOG, uçağı yerde
           bırakır · <span className="sdot" style={{ background: KR_RENK[1] }} /> kritik ·{' '}
           <span className="sdot" style={{ background: KR_RENK[2] }} /> kritik değil &nbsp;·&nbsp;
           Durum, parçanın bugünkü hâlidir · ayrıntı için satıra tıklayın

@@ -117,7 +117,7 @@ export default function ParamPanel() {
                 <th style={{ cursor: 'default' }}>#</th>
                 <th style={{ cursor: 'default' }}>PN</th>
                 <th style={{ cursor: 'default' }}>Kategori</th>
-                <th style={{ cursor: 'default' }}>Kritiklik</th>
+                <th style={{ cursor: 'default' }}>Operasyonel Önem</th>
                 <th className="n" style={{ cursor: 'default' }}>
                   Skor
                 </th>

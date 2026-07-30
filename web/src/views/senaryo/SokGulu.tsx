@@ -65,7 +65,7 @@ export const EKSENLER: Eksen[] = [
     adim: 10,
     bicim: (v) => '+%' + fmt(v),
     ipucu:
-      "Yalnız atölye kabiliyeti OLAN parçaların TAT'ını çarpar. 547 listesi bu şoktan etkilenmez.",
+      "Yalnız atölye kabiliyeti OLAN parçaların TAT'ını çarpar. Dış tamire bağımlı liste bu şoktan etkilenmez.",
   },
   {
     k: 'havuz',

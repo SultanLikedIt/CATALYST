@@ -139,7 +139,7 @@ export const PRESETS: Record<string, Preset> = {
     ...NOTR,
     icKap: 80,
     ad: 'Atölye kapasite kaybı',
-    not: "İç tamir kabiliyeti olan parçaların TAT'ı 1,8 kat uzuyor. 547 listesi (kritik + kabiliyetsiz) bu şoktan etkilenmez — kabiliyetin değeri tam olarak burada ölçülür.",
+    not: "İç tamir kabiliyeti olan parçaların TAT'ı 1,8 kat uzuyor. dış tamire bağımlı liste (kritik + kabiliyetsiz) bu şoktan etkilenmez — kabiliyetin değeri tam olarak burada ölçülür.",
   },
   havuzCekilme: {
     d: 0,

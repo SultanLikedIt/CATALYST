@@ -62,7 +62,7 @@ Object.assign(Chart.defaults.plugins.tooltip, {
   backgroundColor: '#FFFFFF',
   titleColor: C.text,
   bodyColor: C.muted,
-  borderColor: '#CBD1D8',
+  borderColor: C.axis,
   borderWidth: 1,
   multiKeyBackground: '#FFFFFF',
   padding: 10,

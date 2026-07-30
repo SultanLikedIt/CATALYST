@@ -121,10 +121,10 @@ export function alarmlar(
       baslik: `AOG kritik kırmızı ${fmt(baz.kirAog)} → ${fmt(r.kirAog)}`,
       metin:
         `Bu senaryoda ${fmt(r.kirAog - baz.kirAog)} parça daha AOG kritik sınıfında kırmızıya düşüyor. ` +
-        `Her biri "yerde uçak" demek; kritiklik sınıfı ağırlıkları (${f1(params.w0)} / ${f1(
+        `Her biri "yerde uçak" demek; operasyonel önem sınıfı ağırlıkları (${f1(params.w0)} / ${f1(
           params.w1,
         )} / ${f1(params.w2)}) bu yüzden tahsis sırasını da doğrudan değiştiriyor.`,
-      eylem: 'kritikliğe göre dağılım',
+      eylem: 'operasyonel öneme göre dağılım',
       hedef: 'dagilim',
     });
 
@@ -191,12 +191,12 @@ export function alarmlar(
       )} → ${fmt(r.kir)}`,
       metin:
         r.kir > baz.kir
-          ? `Şok yalnız iç tamir kabiliyeti OLAN parçaları vuruyor; 547 listesi (kritik + kabiliyetsiz) ` +
+          ? `Şok yalnız iç tamir kabiliyeti OLAN parçaları vuruyor; dış tamire bağımlı liste (kritik + kabiliyetsiz) ` +
             `bu şoktan hiç etkilenmiyor. Aradaki ${fmt(r.kir - baz.kir)} parça, kabiliyetin bugüne kadar ` +
             `sessizce sağladığı tampondur.`
           : `Kırmızı sayısı sabit kaldı: bu şokta kabiliyetin değeri tam olarak tuttuğu tampon kadar. ` +
             `Kaybın görünür olması için ya talep ya da dış kanal aynı anda bozulmalı.`,
-      eylem: '547 listesini aç',
+      eylem: 'dış tamire bağımlı listeyi aç',
       flag: 'R547',
     });
 

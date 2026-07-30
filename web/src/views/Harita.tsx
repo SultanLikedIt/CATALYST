@@ -480,7 +480,7 @@ export default function Harita() {
             </div>
 
             <div className="ketiket">
-              Kritiklik süzgeci
+              Operasyonel önem süzgeci
               {!krSecilebilir && <i className="pas-not"> · bu metrikte geçerli değil</i>}
             </div>
             <div className="ksatir">

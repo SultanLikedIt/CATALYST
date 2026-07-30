@@ -432,7 +432,7 @@ export default function Ongoru() {
           baslik="2025 çeyreklik talep ve hurda"
           ipucu={
             <>
-              Yaz çeyreği diğerlerinin {pct(K.q3_pct)} üstünde, etki kritiklik sınıflarında homojen.
+              Yaz çeyreği diğerlerinin {pct(K.q3_pct)} üstünde, etki operasyonel önem sınıflarında homojen.
               Yıl içi artış düşük: {pct(K.q1q4_pct)}. Medyan talep{' '}
               <b>{fmt(K.medyan_talep)} adet/yıl</b>, parça-çeyreklerin {pct(K.sifir_ceyrek)}'ı
               sıfır.

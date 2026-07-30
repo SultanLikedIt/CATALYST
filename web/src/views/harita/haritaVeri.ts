@@ -18,7 +18,7 @@ export const IST_I = HA.kod.indexOf('IST');
 
 export const DEPO_RENK: Record<string, string> = {
   ana_depo: '#C1121F',
-  ileri_depo: '#1A1D21',
+  ileri_depo: '#26282A',
   hat_stok: '#6E7783',
   yok: '#B6BDC7',
 };

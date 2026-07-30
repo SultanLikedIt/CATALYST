@@ -197,7 +197,7 @@ export default function App() {
           <div className="foot">
             <b>Varsayımlar.</b> Kullanılabilir stok = FAAL + HOMEBASE. Harita temsilî dağıtım,
             mevsimsellik tek yıla dayanır. Projeksiyon aralıktır: +{pct(B.alt_pct)} ile +
-            {pct(B.ust_pct)} arası. Kritiklik ağırlıkları, BER eşiği {vir(PRM.ber_esigi)} ve alarm
+            {pct(B.ust_pct)} arası. Operasyonel önem ağırlıkları, BER eşiği {vir(PRM.ber_esigi)} ve alarm
             tamponu Öngörü sekmesinden ayarlanabilir. Tüm veriler resmi sentetik case setleridir,
             gerçek THY/AMOS verisi değildir.
           </div>

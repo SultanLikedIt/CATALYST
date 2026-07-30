@@ -20,9 +20,14 @@ import { OrbitControls } from '@react-three/drei';
 import * as THREE from 'three';
 import { hucreYer, kameraKonum, rampaRgb, taramaX, OLCU, type Arazi as AraziTip } from './araziGeo';
 
-/** sahne zemini arka plandan BİR TON AÇIK — arazi kendi tabakasında dursun */
-const ZEMIN = '#fbfcfd';
-const ARKA = '#eef1f4';
+/* Sahne zemini arka plandan BİR TON AÇIK — arazi kendi tabakasında dursun.
+   Değerler nötr palete hizalı: ARKA sayfa zemini (--s-1), ZEMIN kart yüzeyi
+   (--s-0). Eskiden mavi-gri merdivenden geliyordu ve palet nötrleşince
+   arazi kutusu sayfanın geri kalanından hafifçe maviye kaçıyordu.
+   ÇUBUK renkleri buradan gelmez — onlar araziGeo.rampaRgb'de, değişmedi. */
+const ZEMIN = '#f8f8f9';
+const ARKA = '#ecedee';
+const IZGARA = '#dcdddf';
 
 /* ------------------------------------------------------------------ çubuklar */
 
@@ -124,7 +129,7 @@ function Zemin({ a }: { a: AraziTip }) {
         <meshStandardMaterial color={ZEMIN} roughness={0.95} metalness={0} />
       </mesh>
       <lineSegments geometry={geo} raycast={() => null}>
-        <lineBasicMaterial color="#dfe3e8" transparent opacity={0.9} />
+        <lineBasicMaterial color={IZGARA} transparent opacity={0.9} />
       </lineSegments>
     </group>
   );

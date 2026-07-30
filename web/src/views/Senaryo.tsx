@@ -237,7 +237,7 @@ export default function Senaryo() {
     [tk, ay],
   );
 
-  /* --------------------------------------------------- kritiklik dağılımı */
+  /* ---------------------------------------------- operasyonel önem dağılımı */
   const krCfg = useMemo<ChartConfiguration>(
     () =>
       ({
@@ -865,7 +865,7 @@ export default function Senaryo() {
           <Grafik cfg={takvimCfg} h={250} onSec={(i) => aySec(i)} />
         </Kart>
         <Kart
-          baslik="Kritiklik Sınıfı"
+          baslik="Operasyonel Önem Sınıfı"
           ipucu="Seçili ay ile baz durum yan yana. AOG kritik sütunundaki her artış 'yerde uçak' demek."
         >
           <Grafik cfg={krCfg} h={250} />
@@ -953,7 +953,7 @@ export default function Senaryo() {
                   <th style={{ cursor: 'default' }}>#</th>
                   <th style={{ cursor: 'default' }}>PN</th>
                   <th style={{ cursor: 'default' }}>Kategori</th>
-                  <th style={{ cursor: 'default' }}>Kritiklik</th>
+                  <th style={{ cursor: 'default' }}>Operasyonel Önem</th>
                   <th className="n" style={{ cursor: 'default' }}>
                     Adet
                   </th>

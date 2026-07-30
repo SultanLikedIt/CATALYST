@@ -210,8 +210,8 @@ export const SOZLUK: SozlukSatir[] = [
       'Kaynak sistemlerdeki değişiklikleri salt okunur biçimde almak. Hiçbir kaynağa yazılmaz.',
   },
   {
-    terim: 'Risk listesi',
-    acilim: 'Kritik ve tamiri olmayan parçalar',
+    terim: 'Dış tamire bağımlı',
+    acilim: 'Kritik ve iç tamiri olmayan parçalar',
     aciklama:
       'Hem uçak yatıran hem iç tamiri olmayan 547 parça. Kabiliyet yatırımının hedef listesi.',
   },
@@ -219,6 +219,6 @@ export const SOZLUK: SozlukSatir[] = [
     terim: 'Üçlü tehlike',
     acilim: 'En riskli alt küme',
     aciklama:
-      '547 parça içinden geçmişi olmayan yeni nesil 181 parça. Hem kritik, hem tamirsiz, hem geçmişsiz.',
+      'Dış tamire bağımlı 547 parça içinden geçmişi olmayan yeni nesil 181 parça. Hem kritik, hem tamirsiz, hem geçmişsiz.',
   },
 ];
