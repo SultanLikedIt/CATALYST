@@ -32,7 +32,7 @@ export const DURUM: number[] = PN.id.map((_, i) =>
 export const FILTRELER: { anahtar: FlagKey; etiket: string; ipucu: string }[] = [
   { anahtar: 'KIRMIZI', etiket: 'kırmızı', ipucu: 'dayanma süresi tedarik süresinden kısa' },
   { anahtar: 'SIP', etiket: 'siparişsiz', ipucu: 'kırmızı ve açık siparişi yok' },
-  { anahtar: 'R547', etiket: '547 listesi', ipucu: 'AOG kritik + iç tamir kabiliyeti yok' },
+  { anahtar: 'R547', etiket: 'dış tamire bağımlı', ipucu: 'AOG kritik + iç tamir kabiliyeti yok' },
   {
     anahtar: 'BER',
     etiket: 'BER adayı',
